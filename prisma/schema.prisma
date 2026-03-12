@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Channel {
+  id                           String                   @id @default(cuid())
+  channelId                    String                   @unique
+  title                        String
+  description                  String
+  customUrl                    String?
+  publishedAt                  DateTime?
+  country                      String?
+  subscriberCount              Int                      @default(0)
+  videoCount                   Int                      @default(0)
+  viewCount                    BigInt                   @default(0)
+  uploadsPlaylistId            String?
+  thumbnailUrl                 String?
+  channelUrl                   String
+  sourceQuery                  String
+  sourceQueries                String?
+  matchedQueryCount            Int                      @default(0)
+  contactEmail                 String?
+  contactEmails                String?
+  contactFormUrls              String?
+  socialLinks                  String?
+  officialWebsiteUrls          String?
+  externalLinks                String?
+  bestContactMethod            String?
+  bestContactValue             String?
+  contactEvidence              String?
+  hasExternalLinks             Boolean                  @default(false)
+  hasContactEmail              Boolean                  @default(false)
+  hasContactForm               Boolean                  @default(false)
+  hasSocialLinks               Boolean                  @default(false)
+  hasOfficialWebsite           Boolean                  @default(false)
+  contactType                  String                   @default("none")
+  regionGuess                  String?
+  categoryGuess                String?
+  basicFetchedAt               DateTime?
+  lightEnrichmentStatus        String                   @default("PENDING")
+  lightEnrichmentUpdatedAt     DateTime?
+  deepEnrichmentStatus         String                   @default("IDLE")
+  deepEnrichmentUpdatedAt      DateTime?
+  relevanceScore               Int                      @default(0)
+  contactabilityScore          Int                      @default(0)
+  freshnessScore               Int                      @default(0)
+  outreachScore                Float                    @default(0)
+  latestVideoScanCount         Int                      @default(0)
+  videoDescriptionContactCount Int                      @default(0)
+  externalSiteContactCount     Int                      @default(0)
+  externalScanStatus           String?
+  externalScanError            String?
+  externalScanUpdatedAt        DateTime?
+  lastVideoPublishedAt         DateTime?
+  monthlyViewsEstimate         Int?
+  estimatedMonthlyIncomeLow    Int?
+  estimatedMonthlyIncomeBase   Int?
+  estimatedMonthlyIncomeHigh   Int?
+  avgViewsLast10               Int?
+  medianViewsLast10            Int?
+  postsLast30                  Int?
+  postsLast90                  Int?
+  shortsRatio                  Float?
+  audienceHealthScore          Int?
+  consistencyScore             Int?
+  hitDependencyScore           Int?
+  competitionScore             Int?
+  growthScore                  Int?
+  opportunityScore             Int?
+  analysisSummary              String?
+  analysisModeUpdatedAt        DateTime?
+  note                         String?
+  tags                         String?
+  status                       String                   @default("UNREVIEWED")
+  createdAt                    DateTime                 @default(now())
+  updatedAt                    DateTime                 @updatedAt
+  drafts                       OutreachDraft[]
+  videos                       ChannelVideo[]
+  externalScanLogs             ExternalScanLog[]
+  analysisSnapshots            ChannelAnalysisSnapshot[]
+
+  @@index([status])
+  @@index([subscriberCount])
+  @@index([videoCount])
+  @@index([outreachScore])
+  @@index([contactabilityScore])
+  @@index([bestContactMethod])
+  @@index([estimatedMonthlyIncomeHigh])
+  @@index([avgViewsLast10])
+  @@index([competitionScore])
+  @@index([growthScore])
+  @@index([opportunityScore])
+  @@index([updatedAt])
+}
+
+model SearchHistory {
+  id              String   @id @default(cuid())
+  keyword         String
+  conditions      String
+  expandedQueries String?
+  resultCount     Int
+  savedCount      Int      @default(0)
+  pagesFetched    Int      @default(0)
+  quotaUsed       Int      @default(0)
+  executedAt      DateTime @default(now())
+}
+
+model OutreachDraft {
+  id          String   @id @default(cuid())
+  channel     Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId   String
+  subject     String
+  body        String
+  customPoint String?
+  rationale   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([channelId])
+  @@index([createdAt])
+}
+
+model ChannelVideo {
+  id                  String   @id @default(cuid())
+  channel             Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId           String
+  videoId             String   @unique
+  title               String
+  description         String
+  publishedAt         DateTime?
+  videoUrl            String
+  viewCount           BigInt   @default(0)
+  likeCount           Int?
+  commentCount        Int?
+  durationSec         Int?
+  isShorts            Boolean  @default(false)
+  thumbnailUrl        String?
+  extractedEmails     String?
+  extractedUrls       String?
+  socialLinks         String?
+  officialWebsiteUrls String?
+  contactEvidence     String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([channelId])
+  @@index([publishedAt])
+}
+
+model ExternalScanLog {
+  id                   String   @id @default(cuid())
+  channel              Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId            String
+  scannedUrl           String
+  status               String
+  errorMessage         String?
+  extractedEmails      String?
+  extractedFormUrls    String?
+  extractedSocialLinks String?
+  companyNameGuess     String?
+  addressGuess         String?
+  phoneGuess           String?
+  robotsAllowed        Boolean  @default(true)
+  createdAt            DateTime @default(now())
+
+  @@index([channelId])
+  @@index([createdAt])
+}
+
+model ChannelAnalysisSnapshot {
+  id                         String   @id @default(cuid())
+  channel                    Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId                  String
+  monthlyViewsEstimate       Int?
+  estimatedMonthlyIncomeLow  Int?
+  estimatedMonthlyIncomeBase Int?
+  estimatedMonthlyIncomeHigh Int?
+  avgViewsLast10             Int?
+  medianViewsLast10          Int?
+  postsLast30                Int?
+  postsLast90                Int?
+  shortsRatio                Float?
+  audienceHealthScore        Int?
+  consistencyScore           Int?
+  hitDependencyScore         Int?
+  competitionScore           Int?
+  growthScore                Int?
+  opportunityScore           Int?
+  analysisSummary            String?
+  createdAt                  DateTime @default(now())
+
+  @@index([channelId, createdAt])
+}
+
+model AppSetting {
+  id                            String   @id @default("default")
+  currentPlan                   String   @default("FREE")
+  serviceName                   String   @default("TubeLead")
+  serviceDescription            String   @default("YouTubeチャンネル向けの営業リスト管理サービス")
+  defaultPitch                  String   @default("スポンサー提案や共同企画の営業文面を保存します。")
+  tone                          String   @default("POLITE")
+  lengthPreference              String   @default("NORMAL")
+  queryExpansionEnabled         Boolean  @default(false)
+  searchMaxPages                Int      @default(6)
+  searchQuotaBudgetPerRun       Int      @default(600)
+  videosPerChannelForContactScan Int     @default(3)
+  externalSiteScanEnabled       Boolean  @default(true)
+  externalSiteMaxUrlsPerChannel Int      @default(2)
+  externalSiteRateLimitMs       Int      @default(1200)
+  externalSiteTimeoutMs         Int      @default(8000)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+}

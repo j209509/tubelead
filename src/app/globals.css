@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f2ec;
+  --foreground: #111827;
+  --panel: #fffdf9;
+  --muted: #6b7280;
+  --border: rgba(15, 23, 42, 0.1);
+  --accent: #1d4ed8;
+  --accent-soft: rgba(29, 78, 216, 0.12);
+  --success: #0f766e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-heading);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), sans-serif;
+  background-image:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.92), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(245, 242, 236, 0.96));
+}
+
+* {
+  border-color: var(--border);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button[class*="bg-slate-900"],
+button[class*="bg-slate-950"],
+button[class*="bg-rose-600"],
+a[class*="bg-slate-900"],
+a[class*="bg-slate-950"],
+a[class*="bg-rose-600"] {
+  color: #ffffff !important;
+}
+
+button[class*="bg-slate-900"] *,
+button[class*="bg-slate-950"] *,
+button[class*="bg-rose-600"] *,
+a[class*="bg-slate-900"] *,
+a[class*="bg-slate-950"] *,
+a[class*="bg-rose-600"] * {
+  color: inherit !important;
+}
+
+button[class*="bg-slate-900"] svg,
+button[class*="bg-slate-950"] svg,
+button[class*="bg-rose-600"] svg,
+a[class*="bg-slate-900"] svg,
+a[class*="bg-slate-950"] svg,
+a[class*="bg-rose-600"] svg {
+  stroke: currentColor;
+}
+
+::selection {
+  background: rgba(29, 78, 216, 0.16);
+}
+
+.surface-panel {
+  background: color-mix(in srgb, var(--panel) 92%, white 8%);
+  backdrop-filter: blur(18px);
+}
+
+.nav-pill-active,
+.nav-pill-active * {
+  color: #ffffff !important;
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.page-grid {
+  position: relative;
+}
+
+.page-grid::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent 86%);
+}

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import type { SerializedSearchHistory } from "@/lib/channels";
 import { MODE_LABELS } from "@/lib/constants";
 import { searchFormSchema, type SearchFormInput } from "@/lib/schemas";
-import { cn, formatDate, formatNumber } from "@/lib/utils";
+import { formatDate, formatNumber } from "@/lib/utils";
 
 const progressSteps = [
   "競合チャンネル検索中",
@@ -53,10 +53,6 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
   const [error, setError] = useState("");
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
-  const [analysisLevel, setAnalysisLevel] = useState<"low" | "base" | "high">("base");
-  const [analysisWindow, setAnalysisWindow] = useState("30");
-  const [includeShorts, setIncludeShorts] = useState(true);
-  const [activeOnly, setActiveOnly] = useState(true);
   const fallbackTimerRef = useRef<number | null>(null);
 
   const form = useForm<SearchFormInput>({
@@ -98,10 +94,6 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
       mode: "rival",
       hasContactOnly: false,
     });
-    setAnalysisLevel("base");
-    setAnalysisWindow("30");
-    setIncludeShorts(true);
-    setActiveOnly(true);
     setResult(null);
     setError("");
     setIsRedirecting(false);
@@ -191,9 +183,6 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
 
             <form className="mt-12 grid gap-10" onSubmit={onSubmit}>
               <input type="hidden" {...form.register("mode")} value="rival" />
-              <input type="hidden" {...form.register("minSubscribers", { valueAsNumber: true })} />
-              <input type="hidden" {...form.register("minVideos", { valueAsNumber: true })} />
-              <input type="hidden" {...form.register("order")} value={form.getValues("order")} />
               <input type="hidden" {...form.register("hasContactOnly")} value="false" />
 
               <div className="grid gap-4">
@@ -213,82 +202,91 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
               </div>
 
               <div className="grid gap-4">
-                <h2 className="text-base font-semibold text-slate-950">分析レベル</h2>
+                <h2 className="text-base font-semibold text-slate-950">何が分かるか</h2>
                 <div className="grid gap-4 md:grid-cols-3">
                   {[
-                    { key: "low", title: "Low", description: "基本的な競合分析。登録者数、動画本数の比較を確認。" },
-                    { key: "base", title: "Base", description: "標準分析。平均再生数、投稿頻度、Shorts比率を分析。", badge: "推奨" },
-                    { key: "high", title: "High", description: "競合分析、成長率、競合度、市場の参入余地まで俯瞰。" },
-                  ].map((level) => {
-                    const selected = analysisLevel === level.key;
-
-                    return (
-                      <button
-                        key={level.key}
-                        type="button"
-                        onClick={() => setAnalysisLevel(level.key as "low" | "base" | "high")}
-                        className={cn(
-                          "relative rounded-2xl border p-5 text-left transition",
-                          selected
-                            ? "border-fuchsia-300 bg-fuchsia-50/60 shadow-[0_18px_40px_-30px_rgba(168,85,247,0.5)]"
-                            : "border-slate-200 bg-white hover:border-slate-300",
-                        )}
-                      >
-                        {level.badge ? (
-                          <span className="absolute right-4 top-4 rounded-full bg-fuchsia-600 px-2 py-0.5 text-xs font-medium text-white">
-                            {level.badge}
-                          </span>
-                        ) : null}
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={cn(
-                              "h-4 w-4 rounded-full border",
-                              selected ? "border-fuchsia-600 bg-fuchsia-600 shadow-[inset_0_0_0_3px_white]" : "border-slate-300 bg-white",
-                            )}
-                          />
-                          <span className="text-2xl font-semibold tracking-tight text-slate-950">{level.title}</span>
-                        </div>
-                        <p className="mt-4 text-sm leading-7 text-slate-600">{level.description}</p>
-                      </button>
-                    );
-                  })}
+                    {
+                      title: "想定月収",
+                      description: "low / base / high の3段階で、競合の規模感を比較できます。",
+                    },
+                    {
+                      title: "直近動画",
+                      description: "平均再生数、中央値、投稿本数を見て、最近の強さを把握できます。",
+                    },
+                    {
+                      title: "参入余地",
+                      description: "競合度、成長性、参入魅力度を一覧上で見比べられます。",
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.title}
+                      className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50/40 p-5"
+                    >
+                      <p className="text-lg font-semibold text-slate-950">{item.title}</p>
+                      <p className="mt-3 text-sm leading-7 text-slate-600">{item.description}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               <div className="grid gap-4">
-                <h2 className="text-base font-semibold text-slate-950">分析条件</h2>
-                <div className="grid gap-4 md:grid-cols-2">
+                <h2 className="text-base font-semibold text-slate-950">検索条件</h2>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <div className="grid gap-3">
-                    <Label htmlFor="analysisWindow" className="text-sm font-medium text-slate-700">
-                      分析期間
+                    <Label htmlFor="minSubscribers" className="text-sm font-medium text-slate-700">
+                      最低登録者数
+                    </Label>
+                    <Input
+                      id="minSubscribers"
+                      type="number"
+                      min={0}
+                      className="h-11 rounded-2xl bg-slate-50"
+                      {...form.register("minSubscribers", {
+                        setValueAs: (value) => (value === "" ? 0 : Number(value)),
+                      })}
+                    />
+                  </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="minVideos" className="text-sm font-medium text-slate-700">
+                      最低動画数
+                    </Label>
+                    <Input
+                      id="minVideos"
+                      type="number"
+                      min={0}
+                      className="h-11 rounded-2xl bg-slate-50"
+                      {...form.register("minVideos", {
+                        setValueAs: (value) => (value === "" ? 0 : Number(value)),
+                      })}
+                    />
+                  </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="order" className="text-sm font-medium text-slate-700">
+                      並び順
                     </Label>
                     <select
-                      id="analysisWindow"
-                      value={analysisWindow}
-                      onChange={(event) => setAnalysisWindow(event.target.value)}
+                      id="order"
                       className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-fuchsia-400 focus:ring-4 focus:ring-fuchsia-100"
+                      {...form.register("order")}
                     >
-                      <option value="30">過去30日間</option>
-                      <option value="90">過去90日間</option>
-                      <option value="180">過去180日間</option>
+                      <option value="relevance">関連度順</option>
+                      <option value="date">新しい順</option>
                     </select>
                   </div>
                   <div className="grid gap-3">
                     <Label htmlFor="maxResults" className="text-sm font-medium text-slate-700">
                       取得チャンネル数
                     </Label>
-                    <select
+                    <Input
                       id="maxResults"
-                      className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-fuchsia-400 focus:ring-4 focus:ring-fuchsia-100"
+                      type="number"
+                      min={1}
+                      max={5000}
+                      className="h-11 rounded-2xl bg-slate-50"
                       {...form.register("maxResults", {
                         setValueAs: (value) => (value === "" ? 50 : Number(value)),
                       })}
-                    >
-                      <option value="25">25チャンネル</option>
-                      <option value="50">50チャンネル</option>
-                      <option value="100">100チャンネル</option>
-                      <option value="300">300チャンネル</option>
-                    </select>
+                    />
                   </div>
                 </div>
               </div>
@@ -296,24 +294,6 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
               <div className="grid gap-5">
                 <h2 className="text-base font-semibold text-slate-950">オプション</h2>
                 <div className="space-y-3">
-                  <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={includeShorts}
-                      onChange={(event) => setIncludeShorts(event.target.checked)}
-                      className="h-4 w-4 rounded border-slate-300"
-                    />
-                    Shorts動画を分析に含める
-                  </label>
-                  <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={activeOnly}
-                      onChange={(event) => setActiveOnly(event.target.checked)}
-                      className="h-4 w-4 rounded border-slate-300"
-                    />
-                    アクティブなチャンネルのみ（30日以内に投稿）
-                  </label>
                   <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                     <input type="checkbox" className="h-4 w-4 rounded border-slate-300" {...form.register("preferJapanese")} />
                     日本語チャンネル優先

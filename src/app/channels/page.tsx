@@ -650,6 +650,7 @@ export default async function ChannelsPage({
 
       <ChannelsTableClient
         initialItems={data.items}
+        initialStats={data.stats}
         lockedCount={data.lockedCount}
         plan={data.plan}
         mode={filters.mode}

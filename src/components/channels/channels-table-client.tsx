@@ -16,6 +16,7 @@ import { UpgradeDialog } from "@/components/channels/upgrade-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SerializedChannel } from "@/lib/channel-types";
+import type { DashboardStats } from "@/lib/channels";
 import type { AppModeValue, AppPlanValue, ChannelSortValue } from "@/lib/constants";
 import { cn, formatCompactNumber, formatCurrencyYen, formatNumber, truncate } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ type AutoScanStatus = {
 
 type ChannelsTableClientProps = {
   initialItems: SerializedChannel[];
+  initialStats: DashboardStats;
   lockedCount: number;
   plan: AppPlanValue;
   mode: AppModeValue;
@@ -48,6 +50,7 @@ type RowPatch = Partial<
 
 const AUTO_RIVAL_LIGHT_CONCURRENCY = 4;
 const AUTO_SALES_LIGHT_CONCURRENCY = 2;
+const SALES_EMAIL_TARGET = 100;
 const CATEGORY_PILL_STYLES = [
   "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
   "bg-violet-50 text-violet-700 ring-1 ring-violet-100",
@@ -220,6 +223,7 @@ function renderContactValue(channel: SerializedChannel) {
 
 export function ChannelsTableClient({
   initialItems,
+  initialStats,
   lockedCount,
   plan,
   mode,
@@ -238,8 +242,10 @@ export function ChannelsTableClient({
   const [bulkLightLoading, setBulkLightLoading] = useState(false);
   const [bulkDeepLoading, setBulkDeepLoading] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [stats, setStats] = useState(initialStats);
   const [remainingAutoScanIds, setRemainingAutoScanIds] = useState(autoScanIds);
   const [autoScanStatus, setAutoScanStatus] = useState<AutoScanStatus | null>(initialAutoScanStatus);
+  const [salesExpansionState, setSalesExpansionState] = useState<"idle" | "expanding" | "exhausted">("idle");
   const autoQueuedRef = useRef<Set<string>>(new Set());
   const syncTimerRef = useRef<number | null>(null);
 
@@ -251,10 +257,12 @@ export function ChannelsTableClient({
     setBulkLightLoading(false);
     setBulkDeepLoading(false);
     setActionError("");
+    setStats(initialStats);
     setRemainingAutoScanIds(autoScanIds);
     setAutoScanStatus(initialAutoScanStatus);
+    setSalesExpansionState("idle");
     autoQueuedRef.current = new Set();
-  }, [autoScanIds, currentQueryString, initialAutoScanStatus, initialItems]);
+  }, [autoScanIds, currentQueryString, initialAutoScanStatus, initialItems, initialStats]);
 
   useEffect(() => {
     return () => {
@@ -266,7 +274,35 @@ export function ChannelsTableClient({
 
   const isSales = mode === "sales";
   const columnCount = isSales ? 12 : 7;
-  const allVisibleSelected = isSales && rows.length > 0 && selectedIds.length === rows.length;
+  const sourceQuery = useMemo(() => new URLSearchParams(currentQueryString).get("sourceQuery")?.trim() || "", [
+    currentQueryString,
+  ]);
+  const displayRows = useMemo(() => {
+    if (!isSales) {
+      return rows;
+    }
+
+    return rows.filter((row) => {
+      const hasContact =
+        row.contactEmails.length > 0 ||
+        Boolean(row.contactEmail) ||
+        row.contactFormUrls.length > 0 ||
+        row.socialLinks.length > 0 ||
+        row.officialWebsiteUrls.length > 0;
+
+      return hasContact || row.lightEnrichmentStatus !== "COMPLETED";
+    });
+  }, [isSales, rows]);
+  const allVisibleSelected =
+    isSales && displayRows.length > 0 && displayRows.every((row) => selectedIds.includes(row.id));
+
+  useEffect(() => {
+    if (!isSales) {
+      return;
+    }
+
+    setSelectedIds((current) => current.filter((id) => displayRows.some((row) => row.id === id)));
+  }, [displayRows, isSales]);
 
   const visibleSummary = useMemo(
     () => ({
@@ -304,6 +340,7 @@ export function ChannelsTableClient({
 
     const data = (await response.json()) as {
       items?: SerializedChannel[];
+      stats?: DashboardStats;
       autoScanIds?: string[];
       autoScanStatus?: AutoScanStatus | null;
     };
@@ -313,6 +350,9 @@ export function ChannelsTableClient({
     }
 
     setRows(data.items);
+    if (data.stats) {
+      setStats(data.stats);
+    }
     setSelectedIds((current) => current.filter((id) => data.items?.some((row) => row.id === id)));
     setRemainingAutoScanIds(Array.isArray(data.autoScanIds) ? data.autoScanIds : []);
     setAutoScanStatus(data.autoScanStatus ?? null);
@@ -418,6 +458,52 @@ export function ChannelsTableClient({
     [patchRow, replaceRow],
   );
 
+  const expandSalesSearch = useCallback(async () => {
+    if (mode !== "sales" || !sourceQuery) {
+      return;
+    }
+
+    setSalesExpansionState("expanding");
+
+    try {
+      const response = await fetch("/api/search/expand", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          keyword: sourceQuery,
+          mode: "sales",
+          currentTotal: stats.totalChannels,
+          targetEmails: SALES_EMAIL_TARGET,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "検索候補の追加取得に失敗しました。");
+      }
+
+      await syncVisiblePage();
+
+      if (data.goalReached) {
+        setSalesExpansionState("idle");
+        return;
+      }
+
+      if (data.exhausted || data.newChannelsAdded <= 0) {
+        setSalesExpansionState("exhausted");
+        return;
+      }
+
+      setSalesExpansionState("idle");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "検索候補の追加取得に失敗しました。";
+      setActionError(message);
+      setSalesExpansionState("exhausted");
+    }
+  }, [mode, sourceQuery, stats.totalChannels, syncVisiblePage]);
+
   useEffect(() => {
     const concurrency = mode === "sales" ? AUTO_SALES_LIGHT_CONCURRENCY : AUTO_RIVAL_LIGHT_CONCURRENCY;
     const availableSlots = Math.max(0, concurrency - lightLoadingIds.length);
@@ -438,6 +524,34 @@ export function ChannelsTableClient({
       void runLightScan(channelId);
     });
   }, [lightLoadingIds.length, mode, remainingAutoScanIds, runLightScan]);
+
+  useEffect(() => {
+    if (mode !== "sales" || !sourceQuery) {
+      return;
+    }
+
+    if (stats.emailCount >= SALES_EMAIL_TARGET) {
+      return;
+    }
+
+    if (salesExpansionState !== "idle") {
+      return;
+    }
+
+    if (remainingAutoScanIds.length > 0 || lightLoadingIds.length > 0) {
+      return;
+    }
+
+    void expandSalesSearch();
+  }, [
+    expandSalesSearch,
+    lightLoadingIds.length,
+    mode,
+    remainingAutoScanIds.length,
+    salesExpansionState,
+    sourceQuery,
+    stats.emailCount,
+  ]);
 
   async function handleBulkLightScan() {
     const targets = selectedIds.filter((id) => !lightLoadingIds.includes(id));
@@ -474,7 +588,7 @@ export function ChannelsTableClient({
   }
 
   function toggleAll(checked: boolean) {
-    setSelectedIds(checked ? rows.map((row) => row.id) : []);
+    setSelectedIds(checked ? displayRows.map((row) => row.id) : []);
   }
 
   function pushGlobalSort(sort: ChannelSortValue) {
@@ -511,6 +625,22 @@ export function ChannelsTableClient({
             </>
           ) : null}
         </p>
+        {isSales ? (
+          <p className="text-xs text-slate-500">
+            {"メール進捗 "}
+            {formatNumber(stats.emailCount)}
+            {" / "}
+            {formatNumber(SALES_EMAIL_TARGET)}
+            {" 件目標"}
+            {salesExpansionState === "expanding"
+              ? " ・ 候補を追加探索中"
+              : salesExpansionState === "exhausted" && stats.emailCount < SALES_EMAIL_TARGET
+                ? " ・ 追加探索を完了しました（これ以上候補なし）"
+                : stats.emailCount >= SALES_EMAIL_TARGET
+                  ? " ・ 目標達成"
+                  : " ・ 連絡先候補を継続探索中"}
+          </p>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-3">
           {isSales ? (
@@ -665,7 +795,16 @@ export function ChannelsTableClient({
             </thead>
 
             <tbody className="divide-y divide-slate-200 bg-white">
-              {rows.map((channel) => {
+              {displayRows.length === 0 ? (
+                <tr>
+                  <td colSpan={columnCount} className="px-6 py-12 text-center text-sm text-slate-500">
+                    {isSales
+                      ? "連絡先が見つかった行はここに表示されます。現在は補完中か、条件に合う連絡先候補がありません。"
+                      : "表示できるチャンネルがありません。条件を変更して再度お試しください。"}
+                  </td>
+                </tr>
+              ) : null}
+              {displayRows.map((channel) => {
                 const isLightLoading = lightLoadingIds.includes(channel.id);
                 const categoryLabel = channel.categoryGuess || "未分類";
 

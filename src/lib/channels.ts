@@ -37,6 +37,39 @@ export type SerializedSearchHistory = {
   executedAt: string;
 };
 
+export async function getLatestSearchInputByKeyword(keyword: string, mode: SearchFormInput["mode"]) {
+  const rows = await prisma.searchHistory.findMany({
+    where: { keyword },
+    orderBy: { executedAt: "desc" },
+    take: 10,
+  });
+
+  for (const row of rows) {
+    try {
+      const parsed = JSON.parse(row.conditions) as Partial<SearchFormInput>;
+      if ((parsed.mode || "sales") !== mode) {
+        continue;
+      }
+
+      return {
+        mode,
+        minSubscribers: 0,
+        minVideos: 0,
+        maxResults: 300,
+        order: "relevance",
+        hasContactOnly: false,
+        preferJapanese: true,
+        ...parsed,
+        keyword,
+      } satisfies SearchFormInput;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 export type DashboardStats = {
   totalChannels: number;
   emailCount: number;
@@ -1189,7 +1222,11 @@ export async function upsertNormalizedChannel(item: NormalizedYoutubeChannel) {
   return saved.id;
 }
 
-export async function saveSearchResults(input: SearchFormInput, result: SearchChannelsResult) {
+export async function saveSearchResults(
+  input: SearchFormInput,
+  result: SearchChannelsResult,
+  options?: { recordHistory?: boolean },
+) {
   let savedCount = 0;
   const errors: string[] = [];
 
@@ -1202,17 +1239,19 @@ export async function saveSearchResults(input: SearchFormInput, result: SearchCh
     }
   }
 
-  await prisma.searchHistory.create({
-    data: {
-      keyword: input.keyword,
-      conditions: JSON.stringify(input),
-      expandedQueries: JSON.stringify(result.expandedQueries),
-      resultCount: result.items.length,
-      savedCount,
-      pagesFetched: result.pagesFetched,
-      quotaUsed: result.quotaUsed,
-    },
-  });
+  if (options?.recordHistory !== false) {
+    await prisma.searchHistory.create({
+      data: {
+        keyword: input.keyword,
+        conditions: JSON.stringify(input),
+        expandedQueries: JSON.stringify(result.expandedQueries),
+        resultCount: result.items.length,
+        savedCount,
+        pagesFetched: result.pagesFetched,
+        quotaUsed: result.quotaUsed,
+      },
+    });
+  }
 
   return {
     savedCount,

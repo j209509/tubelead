@@ -58,7 +58,7 @@ function ModeCard({
           iconWrap: "bg-blue-600 text-white shadow-[0_20px_34px_-20px_rgba(37,99,235,0.9)]",
           label: "text-blue-700",
           bullet: "bg-blue-600",
-          button: "bg-blue-600 hover:bg-blue-700 text-white",
+          button: "bg-blue-600 text-white hover:bg-blue-700 hover:text-white !text-white [&_svg]:!text-white",
         }
       : {
           card:
@@ -68,7 +68,7 @@ function ModeCard({
           iconWrap: "bg-fuchsia-600 text-white shadow-[0_20px_34px_-20px_rgba(168,85,247,0.9)]",
           label: "text-fuchsia-700",
           bullet: "bg-fuchsia-600",
-          button: "bg-fuchsia-600 hover:bg-fuchsia-700 text-white",
+          button: "bg-fuchsia-600 text-white hover:bg-fuchsia-700 hover:text-white !text-white [&_svg]:!text-white",
         };
 
   return (

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 
 import { ChannelsTableClient } from "@/components/channels/channels-table-client";
 import { UpgradeDialog } from "@/components/channels/upgrade-dialog";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { CHANNEL_SORT_LABELS, MODE_LABELS, type AppModeValue } from "@/lib/constants";
-import { getChannelList, getRivalDashboardSummary } from "@/lib/channels";
+import { getChannelList } from "@/lib/channels";
 import { channelFiltersSchema, type ChannelFiltersInput } from "@/lib/schemas";
 import { formatCompactNumber, formatCurrencyYen, formatNumber } from "@/lib/utils";
 
@@ -44,6 +45,38 @@ function toQueryString(filters: ChannelFiltersInput, overrides?: Partial<Channel
   return params.toString();
 }
 
+function countRivalActiveFilters(filters: ChannelFiltersInput) {
+  return [
+    Boolean(filters.q),
+    Boolean(filters.sourceQuery),
+    filters.minSubscribers > 0,
+    filters.minVideos > 0,
+    filters.minAvgViewsLast10 > 0,
+    filters.minPostsLast30 > 0,
+    filters.minOpportunityScore > 0,
+    filters.minEstimatedMonthlyIncomeBase > 0,
+    filters.maxShortsRatio < 100,
+    filters.publishedWithinDays > 0,
+  ].filter(Boolean).length;
+}
+
+function buildRivalSummary(items: Awaited<ReturnType<typeof getChannelList>>["items"], total: number) {
+  const average = (values: number[]) => {
+    if (values.length === 0) {
+      return 0;
+    }
+
+    return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+  };
+
+  return {
+    totalChannels: total,
+    averageSubscribers: average(items.map((item) => item.subscriberCount || 0)),
+    averageViews: average(items.map((item) => item.avgViewsLast10 || 0)),
+    averageIncome: average(items.map((item) => item.estimatedMonthlyIncomeBase || 0)),
+  };
+}
+
 const DEFAULT_FILTERS: ChannelFiltersInput = {
   mode: "sales",
   q: "",
@@ -69,18 +102,18 @@ const DEFAULT_FILTERS: ChannelFiltersInput = {
 };
 
 const salesSummaryCards = [
-  { key: "totalChannels", label: "表示対象件数" },
-  { key: "emailCount", label: "email あり件数" },
-  { key: "formCount", label: "form あり件数" },
-  { key: "socialCount", label: "social link あり件数" },
-  { key: "officialSiteCount", label: "official site あり件数" },
+  { key: "totalChannels", label: "総件数" },
+  { key: "emailCount", label: "メールあり件数" },
+  { key: "formCount", label: "フォームあり件数" },
+  { key: "socialCount", label: "SNSあり件数" },
+  { key: "officialSiteCount", label: "公式サイトあり件数" },
   { key: "bestEmailCount", label: "bestContact=email" },
   { key: "bestFormCount", label: "bestContact=form" },
 ] as const;
 
 function ModeTabs({ currentMode }: { currentMode: AppModeValue }) {
   return (
-    <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1">
+    <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
       {(["sales", "rival"] as const).map((mode) => {
         const active = currentMode === mode;
         return (
@@ -90,7 +123,7 @@ function ModeTabs({ currentMode }: { currentMode: AppModeValue }) {
             className={
               active
                 ? "rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-                : "rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                : "rounded-xl px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
             }
           >
             {MODE_LABELS[mode]}
@@ -98,6 +131,323 @@ function ModeTabs({ currentMode }: { currentMode: AppModeValue }) {
         );
       })}
     </div>
+  );
+}
+
+function FilterInput({
+  id,
+  name,
+  label,
+  defaultValue,
+  placeholder,
+  type = "text",
+  min,
+  max,
+}: {
+  id: string;
+  name: string;
+  label: string;
+  defaultValue: string | number;
+  placeholder: string;
+  type?: "text" | "number";
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id} className="text-xs font-medium text-slate-500">
+        {label}
+      </Label>
+      <input
+        id={id}
+        name={name}
+        type={type}
+        min={min}
+        max={max}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+      />
+    </div>
+  );
+}
+
+function SalesFilters({ filters }: { filters: ChannelFiltersInput }) {
+  return (
+    <Card className="rounded-[28px] border-slate-200 shadow-sm">
+      <CardHeader>
+        <CardTitle>フィルタ</CardTitle>
+        <CardDescription>営業モードでは連絡可能性と抽出済み情報を中心に絞り込みます。</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-6" method="GET">
+          <input type="hidden" name="page" value="1" />
+          <input type="hidden" name="mode" value="sales" />
+
+          <div className="grid gap-2 xl:col-span-2">
+            <Label htmlFor="channel-filter-q-sales" className="text-xs font-medium text-slate-500">
+              キーワード / チャンネル名
+            </Label>
+            <input
+              id="channel-filter-q-sales"
+              name="q"
+              defaultValue={filters.q}
+              placeholder="チャンネル名、カテゴリ、地域、メモで検索"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+            />
+          </div>
+
+          <FilterInput
+            id="channel-filter-source-query-sales"
+            name="sourceQuery"
+            label="検索ソース語"
+            defaultValue={filters.sourceQuery}
+            placeholder="sourceQueries から検索"
+          />
+          <FilterInput
+            id="channel-filter-min-subscribers-sales"
+            name="minSubscribers"
+            label="登録者数 以上"
+            type="number"
+            min={0}
+            defaultValue={filters.minSubscribers}
+            placeholder="0"
+          />
+          <FilterInput
+            id="channel-filter-min-videos-sales"
+            name="minVideos"
+            label="動画数 以上"
+            type="number"
+            min={0}
+            defaultValue={filters.minVideos}
+            placeholder="0"
+          />
+          <FilterInput
+            id="channel-filter-contactability-sales"
+            name="minContactabilityScore"
+            label="連絡可能性スコア 以上"
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={filters.minContactabilityScore}
+            placeholder="0"
+          />
+
+          <div className="grid gap-2">
+            <Label htmlFor="channel-filter-sort-sales" className="text-xs font-medium text-slate-500">
+              並び順
+            </Label>
+            <select
+              id="channel-filter-sort-sales"
+              name="sort"
+              defaultValue={filters.sort}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+            >
+              {Object.entries(CHANNEL_SORT_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+            <input type="checkbox" name="hasEmail" value="true" defaultChecked={filters.hasEmail} />
+            メールあり
+          </label>
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+            <input type="checkbox" name="hasForm" value="true" defaultChecked={filters.hasForm} />
+            フォームあり
+          </label>
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+            <input type="checkbox" name="hasSocial" value="true" defaultChecked={filters.hasSocial} />
+            SNSあり
+          </label>
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+            <input type="checkbox" name="hasOfficialSite" value="true" defaultChecked={filters.hasOfficialSite} />
+            公式サイトあり
+          </label>
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+            <input type="checkbox" name="hasVideoContact" value="true" defaultChecked={filters.hasVideoContact} />
+            動画概要欄から抽出あり
+          </label>
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+            <input type="checkbox" name="hasExternalContact" value="true" defaultChecked={filters.hasExternalContact} />
+            外部サイトから抽出あり
+          </label>
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+            <input type="checkbox" name="onlyUnreviewed" value="true" defaultChecked={filters.onlyUnreviewed} />
+            未確認のみ
+          </label>
+
+          <div className="flex gap-3 md:col-span-2 xl:col-span-6 xl:justify-end">
+            <Button type="submit">絞り込む</Button>
+            <Button asChild variant="secondary">
+              <Link href="/channels?mode=sales">リセット</Link>
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RivalFilters({ filters }: { filters: ChannelFiltersInput }) {
+  const activeFilterCount = countRivalActiveFilters(filters);
+
+  return (
+    <details className="group rounded-[28px] border border-slate-200 bg-white shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+            <SlidersHorizontal className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-slate-950">フィルタ</p>
+            <p className="text-sm text-slate-500">
+              初期状態では折りたたみ表示です。必要なときだけ条件を広げて調整できます。
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 md:inline-flex">
+            条件 {activeFilterCount} 件
+          </div>
+          <div className="hidden items-center gap-2 rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 md:inline-flex">
+            並び順: {CHANNEL_SORT_LABELS[filters.sort]}
+          </div>
+          <ChevronDown className="h-5 w-5 text-slate-400 transition group-open:rotate-180" />
+        </div>
+      </summary>
+
+      <div className="border-t border-slate-200 px-6 py-6">
+        <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-6" method="GET">
+          <input type="hidden" name="page" value="1" />
+          <input type="hidden" name="mode" value="rival" />
+
+          <div className="grid gap-2 xl:col-span-2">
+            <Label htmlFor="channel-filter-q-rival" className="text-xs font-medium text-slate-500">
+              チャンネル名で検索
+            </Label>
+            <input
+              id="channel-filter-q-rival"
+              name="q"
+              defaultValue={filters.q}
+              placeholder="チャンネル名やテーマで検索"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+            />
+          </div>
+
+          <FilterInput
+            id="channel-filter-source-query-rival"
+            name="sourceQuery"
+            label="検索ソース語"
+            defaultValue={filters.sourceQuery}
+            placeholder="元の検索語で絞り込む"
+          />
+          <FilterInput
+            id="channel-filter-min-subscribers-rival"
+            name="minSubscribers"
+            label="登録者数 以上"
+            type="number"
+            min={0}
+            defaultValue={filters.minSubscribers}
+            placeholder="0"
+          />
+          <FilterInput
+            id="channel-filter-min-avg-views-rival"
+            name="minAvgViewsLast10"
+            label="平均視聴回数 以上"
+            type="number"
+            min={0}
+            defaultValue={filters.minAvgViewsLast10}
+            placeholder="0"
+          />
+          <FilterInput
+            id="channel-filter-income-base-rival"
+            name="minEstimatedMonthlyIncomeBase"
+            label="想定月収 base 以上"
+            type="number"
+            min={0}
+            defaultValue={filters.minEstimatedMonthlyIncomeBase}
+            placeholder="0"
+          />
+          <FilterInput
+            id="channel-filter-min-videos-rival"
+            name="minVideos"
+            label="動画数 以上"
+            type="number"
+            min={0}
+            defaultValue={filters.minVideos}
+            placeholder="0"
+          />
+          <FilterInput
+            id="channel-filter-posts-last30-rival"
+            name="minPostsLast30"
+            label="直近30日投稿 以上"
+            type="number"
+            min={0}
+            defaultValue={filters.minPostsLast30}
+            placeholder="0"
+          />
+          <FilterInput
+            id="channel-filter-opportunity-rival"
+            name="minOpportunityScore"
+            label="参入魅力度 以上"
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={filters.minOpportunityScore}
+            placeholder="0"
+          />
+          <div className="grid gap-2">
+            <Label htmlFor="channel-filter-sort-rival" className="text-xs font-medium text-slate-500">
+              並び順
+            </Label>
+            <select
+              id="channel-filter-sort-rival"
+              name="sort"
+              defaultValue={filters.sort}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
+            >
+              {Object.entries(CHANNEL_SORT_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <FilterInput
+            id="channel-filter-shorts-ratio-rival"
+            name="maxShortsRatio"
+            label="Shorts比率 以下 (%)"
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={filters.maxShortsRatio}
+            placeholder="100"
+          />
+          <FilterInput
+            id="channel-filter-published-within-rival"
+            name="publishedWithinDays"
+            label="最新投稿日 何日以内"
+            type="number"
+            min={0}
+            defaultValue={filters.publishedWithinDays}
+            placeholder="0"
+          />
+
+          <div className="flex gap-3 md:col-span-2 xl:col-span-6 xl:justify-end">
+            <Button type="submit" className="bg-blue-600 hover:bg-blue-500">
+              検索
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href="/channels?mode=rival&sort=incomeHigh">リセット</Link>
+            </Button>
+          </div>
+        </form>
+      </div>
+    </details>
   );
 }
 
@@ -113,331 +463,96 @@ export default async function ChannelsPage({
     baseFilters.mode === "rival" && typeof params.sort !== "string"
       ? { ...baseFilters, sort: "incomeHigh" as const }
       : baseFilters;
-  const [data, rivalSummary] = await Promise.all([
-    getChannelList(filters, { includeAutoScanIds: filters.mode === "rival" }),
-    filters.mode === "rival" ? getRivalDashboardSummary(filters) : Promise.resolve(null),
-  ]);
+  const data = await getChannelList(filters, { includeAutoScanIds: filters.mode === "rival" });
+  const rivalSummary = filters.mode === "rival" ? buildRivalSummary(data.items, data.total) : null;
+
+  const actions = (
+    <div className="flex flex-wrap items-center gap-3">
+      <ModeTabs currentMode={filters.mode} />
+      <Button asChild>
+        <a href={`/api/export/csv?${toQueryString(filters, { page: 1 })}`}>CSV出力</a>
+      </Button>
+    </div>
+  );
 
   return (
     <AppShell
-      title={filters.mode === "rival" ? "ライバル調査一覧" : "営業リスト一覧"}
+      title={filters.mode === "sales" ? "一覧管理" : undefined}
       description={
-        filters.mode === "rival"
-          ? "想定月収、投稿頻度、再生効率、Shorts依存度を比較しやすい一覧です。検索直後は基本情報を表示し、動画分析は後から順次反映されます。"
-          : "検索後のチャンネルを営業リストとして整理できます。基本取得後に動画補完が順次進み、必要な行だけ外部サイトの詳細走査を実行できます。"
+        filters.mode === "sales"
+          ? "保存済みのチャンネルを確認しながら、営業対象の整理と詳細確認を進められます。"
+          : undefined
       }
-      actions={
-        <div className="flex flex-wrap items-center gap-3">
-          <ModeTabs currentMode={filters.mode} />
-          <Button asChild>
-            <a href={`/api/export/csv?${toQueryString(filters, { page: 1 })}`}>CSV出力</a>
-          </Button>
-        </div>
-      }
+      actions={filters.mode === "sales" ? actions : undefined}
     >
-      {filters.mode === "rival" && rivalSummary ? (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-sm text-slate-500">該当チャンネル数</p>
-              <p className="mt-3 text-3xl font-semibold text-slate-950">{formatNumber(rivalSummary.totalChannels)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-sm text-slate-500">想定月収中央値</p>
-              <p className="mt-3 text-3xl font-semibold text-slate-950">
-                {formatCurrencyYen(rivalSummary.medianMonthlyIncomeBase)}
+      {filters.mode === "rival" ? (
+        <>
+          <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-500">ライバル調査</p>
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-950">検索結果一覧</h1>
+              <p className="max-w-3xl text-sm leading-7 text-slate-500">
+                想定月収、平均視聴回数、投稿頻度を比較しやすい一覧です。必要な条件だけフィルタを開いて絞り込めます。
               </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-sm text-slate-500">高頻度投稿チャンネル</p>
-              <p className="mt-3 text-3xl font-semibold text-slate-950">{formatNumber(rivalSummary.highPostingCount)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-sm text-slate-500">Shorts主体チャンネル</p>
-              <p className="mt-3 text-3xl font-semibold text-slate-950">{formatNumber(rivalSummary.shortsHeavyCount)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-sm text-slate-500">参入魅力度が高い件数</p>
-              <p className="mt-3 text-3xl font-semibold text-slate-950">
-                {formatNumber(rivalSummary.highOpportunityCount)}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-sm text-slate-500">想定月収 high 順ランキング</p>
-              <div className="mt-3 space-y-2">
-                {rivalSummary.topIncomeChannels.length > 0 ? (
-                  rivalSummary.topIncomeChannels.map((channel, index) => (
-                    <div key={channel.id} className="flex items-center justify-between gap-3 text-sm">
-                      <span className="text-slate-600">
-                        {index + 1}. {channel.title}
-                      </span>
-                      <span className="font-medium text-slate-950">
-                        {formatCompactNumber(channel.estimatedMonthlyIncomeHigh)}円
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-slate-500">分析待ちです。</p>
-                )}
+            </div>
+            {actions}
+          </section>
+
+          {rivalSummary ? (
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <p className="text-sm text-slate-500">登録チャンネル数</p>
+                  <p className="mt-3 text-5xl font-semibold tracking-tight text-slate-950">
+                    {formatNumber(rivalSummary.totalChannels)}
+                  </p>
+                  <p className="mt-2 text-sm text-emerald-600">現在の絞り込み結果</p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </section>
-      ) : (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-          {salesSummaryCards.map((card) => (
-            <Card key={card.key}>
-              <CardContent className="p-6">
-                <p className="text-sm text-slate-500">{card.label}</p>
-                <p className="mt-3 text-3xl font-semibold text-slate-950">
-                  {formatNumber(data.stats[card.key as keyof typeof data.stats])}
+              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <p className="text-sm text-slate-500">平均登録者数</p>
+                <p className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
+                  {formatCompactNumber(rivalSummary.averageSubscribers)}
                 </p>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
+                <p className="mt-2 text-sm text-emerald-600">表示中チャンネル平均</p>
+              </div>
+              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <p className="text-sm text-slate-500">平均視聴回数</p>
+                <p className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
+                  {formatCompactNumber(rivalSummary.averageViews)}
+                </p>
+                <p className="mt-2 text-sm text-emerald-600">直近10本の平均値ベース</p>
+              </div>
+              <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <p className="text-sm text-slate-500">平均想定月収</p>
+                <p className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
+                  {formatCurrencyYen(rivalSummary.averageIncome)}
+                </p>
+                <p className="mt-2 text-sm text-emerald-600">base 推定の平均</p>
+              </div>
+            </section>
+          ) : null}
+
+          <RivalFilters filters={filters} />
+        </>
+      ) : (
+        <>
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+            {salesSummaryCards.map((card) => (
+              <Card key={card.key}>
+                <CardContent className="p-6">
+                  <p className="text-sm text-slate-500">{card.label}</p>
+                  <p className="mt-3 text-3xl font-semibold text-slate-950">
+                    {formatNumber(data.stats[card.key as keyof typeof data.stats])}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </section>
+
+          <SalesFilters filters={filters} />
+        </>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>フィルタ</CardTitle>
-          <CardDescription>
-            {filters.mode === "rival"
-              ? "ライバル調査モードでは分析指標を中心に絞り込みます。"
-              : "営業モードでは連絡可能性と補完状況を中心に絞り込みます。"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-6" method="GET">
-            <input type="hidden" name="page" value="1" />
-            <input type="hidden" name="mode" value={filters.mode} />
-            <div className="grid gap-2 xl:col-span-2">
-              <Label htmlFor="channel-filter-q">キーワード / チャンネル名</Label>
-              <input
-                id="channel-filter-q"
-                name="q"
-                defaultValue={filters.q}
-                placeholder="チャンネル名、カテゴリ、sourceQuery で検索"
-                className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="channel-filter-source-query">検索ソース語</Label>
-              <input
-                id="channel-filter-source-query"
-                name="sourceQuery"
-                defaultValue={filters.sourceQuery}
-                placeholder="sourceQueries を含む語"
-                className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="channel-filter-min-subscribers">最低登録者数</Label>
-              <input
-                id="channel-filter-min-subscribers"
-                name="minSubscribers"
-                type="number"
-                min={0}
-                defaultValue={filters.minSubscribers}
-                placeholder="登録者数以上"
-                className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="channel-filter-min-videos">最低動画数</Label>
-              <input
-                id="channel-filter-min-videos"
-                name="minVideos"
-                type="number"
-                min={0}
-                defaultValue={filters.minVideos}
-                placeholder="総動画数以上"
-                className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-              />
-            </div>
-
-            {filters.mode === "rival" ? (
-              <>
-                <div className="grid gap-2">
-                  <Label htmlFor="channel-filter-min-avg-views">直近10本平均再生数 以上</Label>
-                  <input
-                    id="channel-filter-min-avg-views"
-                    name="minAvgViewsLast10"
-                    type="number"
-                    min={0}
-                    defaultValue={filters.minAvgViewsLast10}
-                    placeholder="直近平均再生以上"
-                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="channel-filter-income-base">想定月収 base 以上</Label>
-                  <input
-                    id="channel-filter-income-base"
-                    name="minEstimatedMonthlyIncomeBase"
-                    type="number"
-                    min={0}
-                    defaultValue={filters.minEstimatedMonthlyIncomeBase}
-                    placeholder="想定月収 base 以上"
-                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="channel-filter-posts-last30">直近30日投稿本数 以上</Label>
-                  <input
-                    id="channel-filter-posts-last30"
-                    name="minPostsLast30"
-                    type="number"
-                    min={0}
-                    defaultValue={filters.minPostsLast30}
-                    placeholder="直近30日投稿本数以上"
-                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="channel-filter-opportunity">参入魅力度 以上</Label>
-                  <input
-                    id="channel-filter-opportunity"
-                    name="minOpportunityScore"
-                    type="number"
-                    min={0}
-                    max={100}
-                    defaultValue={filters.minOpportunityScore}
-                    placeholder="参入魅力度以上"
-                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="grid gap-2">
-                  <Label htmlFor="channel-filter-contactability">連絡可能性スコア 以上</Label>
-                  <input
-                    id="channel-filter-contactability"
-                    name="minContactabilityScore"
-                    type="number"
-                    min={0}
-                    max={100}
-                    defaultValue={filters.minContactabilityScore}
-                    placeholder="連絡可能性以上"
-                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="channel-filter-sort-sales">並び順</Label>
-                  <select
-                    id="channel-filter-sort-sales"
-                    name="sort"
-                    defaultValue={filters.sort}
-                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  >
-                    {Object.entries(CHANNEL_SORT_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-
-            {filters.mode === "rival" ? (
-              <>
-                <div className="grid gap-2">
-                  <Label htmlFor="channel-filter-sort-rival">並び順</Label>
-                  <select
-                    id="channel-filter-sort-rival"
-                    name="sort"
-                    defaultValue={filters.sort}
-                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  >
-                    {Object.entries(CHANNEL_SORT_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="channel-filter-shorts-ratio">Shorts率 以下 (%)</Label>
-                  <input
-                    id="channel-filter-shorts-ratio"
-                    name="maxShortsRatio"
-                    type="number"
-                    min={0}
-                    max={100}
-                    defaultValue={filters.maxShortsRatio}
-                    placeholder="Shorts率 以下"
-                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="channel-filter-published-within">最新投稿日 何日以内</Label>
-                  <input
-                    id="channel-filter-published-within"
-                    name="publishedWithinDays"
-                    type="number"
-                    min={0}
-                    defaultValue={filters.publishedWithinDays}
-                    placeholder="最新投稿日 ○日以内"
-                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-              </>
-            ) : null}
-
-            {filters.mode === "sales" ? (
-              <>
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
-                  <input type="checkbox" name="hasEmail" value="true" defaultChecked={filters.hasEmail} />
-                  メールあり
-                </label>
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
-                  <input type="checkbox" name="hasForm" value="true" defaultChecked={filters.hasForm} />
-                  フォームあり
-                </label>
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
-                  <input type="checkbox" name="hasSocial" value="true" defaultChecked={filters.hasSocial} />
-                  SNSあり
-                </label>
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
-                  <input type="checkbox" name="hasOfficialSite" value="true" defaultChecked={filters.hasOfficialSite} />
-                  外部サイトあり
-                </label>
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
-                  <input type="checkbox" name="hasVideoContact" value="true" defaultChecked={filters.hasVideoContact} />
-                  動画概要欄から抽出あり
-                </label>
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
-                  <input type="checkbox" name="hasExternalContact" value="true" defaultChecked={filters.hasExternalContact} />
-                  外部サイトから抽出あり
-                </label>
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
-                  <input type="checkbox" name="onlyUnreviewed" value="true" defaultChecked={filters.onlyUnreviewed} />
-                  未確認のみ
-                </label>
-              </>
-            ) : null}
-
-            <div className="flex gap-3 md:col-span-2 xl:col-span-6 xl:justify-end">
-              <Button type="submit">絞り込む</Button>
-              <Button asChild variant="secondary">
-                <Link href={`/channels?mode=${filters.mode}`}>リセット</Link>
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
 
       {data.lockedCount > 0 ? (
         <Card>
@@ -445,7 +560,7 @@ export default async function ChannelsPage({
             <div>
               <p className="text-sm font-semibold text-slate-950">無料版の表示上限に達しました</p>
               <p className="mt-1 text-sm text-slate-500">
-                総件数は {data.total} 件ありますが、無料版では先頭 10 件まで表示されます。
+                取得件数は {data.total} 件ありますが、無料版では先頭 10 件まで表示されます。
               </p>
             </div>
             <UpgradeDialog triggerLabel="有料版で全件表示" />
@@ -485,7 +600,9 @@ export default async function ChannelsPage({
               size="sm"
               className={data.page >= data.totalPages ? "pointer-events-none opacity-40" : ""}
             >
-              <Link href={`/channels?${toQueryString(filters, { page: Math.min(data.totalPages, data.page + 1) })}`}>次へ</Link>
+              <Link href={`/channels?${toQueryString(filters, { page: Math.min(data.totalPages, data.page + 1) })}`}>
+                次へ
+              </Link>
             </Button>
           </div>
         </div>

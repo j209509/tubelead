@@ -18,15 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { SerializedChannel } from "@/lib/channel-types";
 import type { AppModeValue, AppPlanValue, ChannelSortValue } from "@/lib/constants";
-import { getPostingFrequencyRank } from "@/lib/rival-analysis";
-import {
-  cn,
-  formatCurrencyYen,
-  formatDateTime,
-  formatNumber,
-  formatPercent,
-  truncate,
-} from "@/lib/utils";
+import { cn, formatCompactNumber, formatCurrencyYen, formatDateTime, formatNumber, truncate } from "@/lib/utils";
 
 type AutoScanStatus = {
   targetCount: number;
@@ -56,6 +48,13 @@ type RowPatch = Partial<
 >;
 
 const AUTO_RIVAL_LIGHT_CONCURRENCY = 4;
+const CATEGORY_PILL_STYLES = [
+  "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
+  "bg-violet-50 text-violet-700 ring-1 ring-violet-100",
+  "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+  "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
+  "bg-rose-50 text-rose-700 ring-1 ring-rose-100",
+] as const;
 
 async function runTasksWithConcurrency<T>(
   items: T[],
@@ -111,8 +110,8 @@ function getRivalStatusMeta(status: AutoScanStatus | null, totalCount: number) {
   if (!status) {
     return {
       tone: "slate" as const,
-      label: "準備中",
-      description: `対象 ${formatNumber(totalCount)} 件の進捗を読み込み中です。`,
+      label: "待機中",
+      description: `対象 ${formatNumber(totalCount)} 件の取得状況を集計しています。`,
     };
   }
 
@@ -120,7 +119,7 @@ function getRivalStatusMeta(status: AutoScanStatus | null, totalCount: number) {
     return {
       tone: "slate" as const,
       label: "対象なし",
-      description: "この条件に一致するチャンネルはありません。",
+      description: "現在の絞り込み条件に一致するチャンネルはありません。",
     };
   }
 
@@ -128,7 +127,7 @@ function getRivalStatusMeta(status: AutoScanStatus | null, totalCount: number) {
     return {
       tone: "green" as const,
       label: "調査完了",
-      description: `全 ${formatNumber(status.targetCount)} 件の推定月収補完が完了しました。`,
+      description: `全 ${formatNumber(status.targetCount)} 件の推定月収と直近動画指標の取得が完了しました。`,
     };
   }
 
@@ -136,7 +135,7 @@ function getRivalStatusMeta(status: AutoScanStatus | null, totalCount: number) {
     return {
       tone: "amber" as const,
       label: "一部失敗",
-      description: `${formatNumber(status.completedCount)} 件完了 / ${formatNumber(status.failedCount)} 件は再取得待ちです。`,
+      description: `${formatNumber(status.completedCount)} 件完了 / ${formatNumber(status.failedCount)} 件失敗しています。`,
     };
   }
 
@@ -147,6 +146,31 @@ function getRivalStatusMeta(status: AutoScanStatus | null, totalCount: number) {
       status.pendingCount + status.processingCount + status.failedCount,
     )} 件を補完中です。`,
   };
+}
+
+function getPostingFrequencyText(postsLast30: number | null | undefined) {
+  const posts = postsLast30 || 0;
+
+  if (posts >= 12) return "週3本以上";
+  if (posts >= 3) return "月3本以上";
+  if (posts >= 1) return "月1-2本";
+  return "投稿少なめ";
+}
+
+function getIncomeBarWidth(value: number | null | undefined, maxValue: number) {
+  if (!value || maxValue <= 0) {
+    return 0;
+  }
+
+  return Math.max(12, Math.min(100, Math.round((value / maxValue) * 100)));
+}
+
+function getCategoryPillClass(category: string | null | undefined) {
+  const key = (category || "未分類")
+    .split("")
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  return CATEGORY_PILL_STYLES[key % CATEGORY_PILL_STYLES.length];
 }
 
 export function ChannelsTableClient({
@@ -196,8 +220,8 @@ export function ChannelsTableClient({
   }, []);
 
   const isSales = mode === "sales";
-  const columnCount = isSales ? 18 : 20;
-  const allVisibleSelected = rows.length > 0 && selectedIds.length === rows.length;
+  const columnCount = isSales ? 18 : 7;
+  const allVisibleSelected = isSales && rows.length > 0 && selectedIds.length === rows.length;
 
   const visibleSummary = useMemo(
     () => ({
@@ -211,6 +235,15 @@ export function ChannelsTableClient({
   );
 
   const rivalStatusMeta = useMemo(() => getRivalStatusMeta(autoScanStatus, totalCount), [autoScanStatus, totalCount]);
+
+  const maxVisibleIncomeHigh = useMemo(
+    () =>
+      rows.reduce((max, row) => {
+        const current = row.estimatedMonthlyIncomeHigh || 0;
+        return current > max ? current : max;
+      }, 0),
+    [rows],
+  );
 
   const syncVisiblePage = useCallback(async () => {
     const response = await fetch(`/api/channels?${currentQueryString}`, {
@@ -412,41 +445,34 @@ export function ChannelsTableClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-2">
-          {isSales ? (
-            <>
-              <p className="text-sm font-medium text-slate-900">
-                検索直後は基本情報のみを表示し、あとから動画抽出と連絡先の補完を進めます。
-              </p>
-              <p className="text-xs text-slate-500">
-                基本取得済み {formatNumber(visibleSummary.basicReadyCount)} 件 / 動画走査済み{" "}
-                {formatNumber(visibleSummary.lightCompletedCount)} 件 / 走査待ち{" "}
-                {formatNumber(visibleSummary.lightPendingCount)} 件 / 走査中{" "}
-                {formatNumber(visibleSummary.lightProcessingCount)} 件 / 外部走査済み{" "}
-                {formatNumber(visibleSummary.deepCompletedCount)} 件
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tone={rivalStatusMeta.tone}>{rivalStatusMeta.label}</Badge>
-                <p className="text-sm font-medium text-slate-900">{rivalStatusMeta.description}</p>
-              </div>
-              <p className="text-xs text-slate-500">
-                フィルタ一致 {formatNumber(totalCount)} 件。推定月収や直近動画指標は、取得できた行から順次一覧へ反映されます。
-              </p>
-              {autoScanStatus ? (
-                <p className="text-xs text-slate-500">
-                  完了 {formatNumber(autoScanStatus.completedCount)} 件 / 処理中{" "}
-                  {formatNumber(autoScanStatus.processingCount)} 件 / 待機{" "}
-                  {formatNumber(autoScanStatus.pendingCount)} 件 / 失敗{" "}
-                  {formatNumber(autoScanStatus.failedCount)} 件
-                </p>
-              ) : null}
-            </>
-          )}
-        </div>
+      <div className="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        {isSales ? (
+          <>
+            <p className="text-sm font-medium text-slate-900">
+              検索直後は基本情報のみを表示し、あとから動画分析や連絡先補完を順次反映します。
+            </p>
+            <p className="text-xs text-slate-500">
+              基本取得済み {formatNumber(visibleSummary.basicReadyCount)} 件 / 動画分析済み{" "}
+              {formatNumber(visibleSummary.lightCompletedCount)} 件 / 補完待ち{" "}
+              {formatNumber(visibleSummary.lightPendingCount)} 件 / 分析中{" "}
+              {formatNumber(visibleSummary.lightProcessingCount)} 件 / 外部走査済み{" "}
+              {formatNumber(visibleSummary.deepCompletedCount)} 件
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge tone={rivalStatusMeta.tone}>{rivalStatusMeta.label}</Badge>
+              <p className="text-sm font-medium text-slate-900">{rivalStatusMeta.description}</p>
+            </div>
+            <p className="text-xs text-slate-500">
+              完了 {formatNumber(autoScanStatus?.completedCount || 0)} 件 / 処理中{" "}
+              {formatNumber(autoScanStatus?.processingCount || 0)} 件 / 待機{" "}
+              {formatNumber(autoScanStatus?.pendingCount || 0)} 件 / 失敗{" "}
+              {formatNumber(autoScanStatus?.failedCount || 0)} 件
+            </p>
+          </>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           {isSales ? (
@@ -471,20 +497,19 @@ export function ChannelsTableClient({
                 <RefreshCw className={cn("mr-2 h-4 w-4", bulkDeepLoading && "animate-spin")} />
                 {bulkDeepLoading ? "詳細走査中..." : `選択行を詳細走査 (${selectedIds.length})`}
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedIds([])}
+                disabled={selectedIds.length === 0}
+              >
+                選択解除
+              </Button>
             </>
           ) : (
             <p className="text-xs text-slate-500">並び替え: {currentSort}</p>
           )}
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedIds([])}
-            disabled={selectedIds.length === 0}
-          >
-            選択解除
-          </Button>
         </div>
       </div>
 
@@ -494,269 +519,158 @@ export function ChannelsTableClient({
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white/80">
-        <table className={cn("divide-y divide-slate-200 text-sm", isSales ? "min-w-[1900px]" : "min-w-[2200px]")}>
-          <thead className="bg-slate-50/80 text-left text-slate-500">
-            <tr>
-              <th className="px-4 py-3 font-medium">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300"
-                  checked={allVisibleSelected}
-                  onChange={(event) => toggleAll(event.target.checked)}
-                />
-              </th>
-              <th className="px-4 py-3 font-medium">サムネイル</th>
-              <th className="px-4 py-3 font-medium">チャンネル名</th>
-              <th className="px-4 py-3 font-medium">
+      <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-6 py-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-lg font-semibold text-slate-950">{isSales ? "営業リスト" : "チャンネル比較"}</p>
+              <p className="text-sm text-slate-500">
+                {isSales
+                  ? "保存済みチャンネルの連絡先と補完状況を確認できます。"
+                  : "登録者数、平均視聴回数、投稿頻度、想定月収を横並びで比較できます。"}
+              </p>
+            </div>
+            {!isSales ? (
+              <p className="text-xs text-slate-500">
+                推定月収は自動で補完され、取得できた行から順次一覧に反映されます。
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className={cn("w-full divide-y divide-slate-200 text-sm", isSales ? "min-w-[1900px]" : "min-w-[1180px]")}>
+            <thead className="bg-slate-50/90 text-left text-slate-500">
+              <tr>
                 {isSales ? (
-                  "登録者数"
+                  <>
+                    <th className="px-4 py-3 font-medium">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300"
+                        checked={allVisibleSelected}
+                        onChange={(event) => toggleAll(event.target.checked)}
+                      />
+                    </th>
+                    <th className="px-4 py-3 font-medium">サムネイル</th>
+                    <th className="px-4 py-3 font-medium">チャンネル名</th>
+                    <th className="px-4 py-3 font-medium">登録者数</th>
+                    <th className="px-4 py-3 font-medium">動画数</th>
+                    <th className="px-4 py-3 font-medium">カテゴリ</th>
+                    <th className="px-4 py-3 font-medium">地域</th>
+                    <th className="px-4 py-3 font-medium">連絡先種別</th>
+                    <th className="px-4 py-3 font-medium">bestContact</th>
+                    <th className="px-4 py-3 font-medium">連絡先</th>
+                    <th className="px-4 py-3 font-medium">sourceQueries</th>
+                    <th className="px-4 py-3 font-medium">連絡可能性</th>
+                    <th className="px-4 py-3 font-medium">取得状況</th>
+                    <th className="px-4 py-3 font-medium">動画抽出本数</th>
+                    <th className="px-4 py-3 font-medium">ステータス</th>
+                    <th className="px-4 py-3 font-medium">タグ</th>
+                    <th className="px-4 py-3 font-medium">メモ</th>
+                    <th className="px-4 py-3 font-medium">操作</th>
+                  </>
                 ) : (
-                  <GlobalSortHeader
-                    label="登録者数"
-                    active={currentSort === "subscribers"}
-                    onClick={() => pushGlobalSort("subscribers")}
-                  />
+                  <>
+                    <th className="px-6 py-4 font-medium">チャンネル名</th>
+                    <th className="px-4 py-4 font-medium">カテゴリ</th>
+                    <th className="px-4 py-4 font-medium">
+                      <GlobalSortHeader
+                        label="登録者数"
+                        active={currentSort === "subscribers"}
+                        onClick={() => pushGlobalSort("subscribers")}
+                      />
+                    </th>
+                    <th className="px-4 py-4 font-medium">
+                      <GlobalSortHeader
+                        label="平均視聴回数"
+                        active={currentSort === "avgViews"}
+                        onClick={() => pushGlobalSort("avgViews")}
+                      />
+                    </th>
+                    <th className="px-4 py-4 font-medium">
+                      <GlobalSortHeader
+                        label="投稿頻度"
+                        active={currentSort === "posts30"}
+                        onClick={() => pushGlobalSort("posts30")}
+                      />
+                    </th>
+                    <th className="px-4 py-4 font-medium">
+                      <GlobalSortHeader
+                        label="想定月収"
+                        active={currentSort === "incomeHigh"}
+                        onClick={() => pushGlobalSort("incomeHigh")}
+                      />
+                    </th>
+                    <th className="px-6 py-4 text-right font-medium">アクション</th>
+                  </>
                 )}
-              </th>
-              <th className="px-4 py-3 font-medium">動画数</th>
-              {isSales ? (
-                <>
-                  <th className="px-4 py-3 font-medium">カテゴリ</th>
-                  <th className="px-4 py-3 font-medium">地域</th>
-                  <th className="px-4 py-3 font-medium">連絡先種別</th>
-                  <th className="px-4 py-3 font-medium">bestContact</th>
-                  <th className="px-4 py-3 font-medium">連絡先</th>
-                  <th className="px-4 py-3 font-medium">sourceQueries</th>
-                  <th className="px-4 py-3 font-medium">連絡可能性</th>
-                  <th className="px-4 py-3 font-medium">取得状態</th>
-                  <th className="px-4 py-3 font-medium">動画走査本数</th>
-                  <th className="px-4 py-3 font-medium">ステータス</th>
-                  <th className="px-4 py-3 font-medium">タグ</th>
-                  <th className="px-4 py-3 font-medium">メモ</th>
-                  <th className="px-4 py-3 font-medium">操作</th>
-                </>
-              ) : (
-                <>
-                  <th className="px-4 py-3 font-medium">
-                    <GlobalSortHeader label="総再生数" active={currentSort === "views"} onClick={() => pushGlobalSort("views")} />
-                  </th>
-                  <th className="px-4 py-3 font-medium">
-                    <GlobalSortHeader
-                      label="想定月収"
-                      active={currentSort === "incomeHigh"}
-                      onClick={() => pushGlobalSort("incomeHigh")}
-                    />
-                  </th>
-                  <th className="px-4 py-3 font-medium">
-                    <GlobalSortHeader
-                      label="直近10本平均"
-                      active={currentSort === "avgViews"}
-                      onClick={() => pushGlobalSort("avgViews")}
-                    />
-                  </th>
-                  <th className="px-4 py-3 font-medium">直近10本中央値</th>
-                  <th className="px-4 py-3 font-medium">
-                    <GlobalSortHeader
-                      label="直近30日投稿"
-                      active={currentSort === "posts30"}
-                      onClick={() => pushGlobalSort("posts30")}
-                    />
-                  </th>
-                  <th className="px-4 py-3 font-medium">投稿頻度</th>
-                  <th className="px-4 py-3 font-medium">再生/登録者比</th>
-                  <th className="px-4 py-3 font-medium">Shorts率</th>
-                  <th className="px-4 py-3 font-medium">
-                    <GlobalSortHeader
-                      label="最新投稿日"
-                      active={currentSort === "latestVideo"}
-                      onClick={() => pushGlobalSort("latestVideo")}
-                    />
-                  </th>
-                  <th className="px-4 py-3 font-medium">
-                    <GlobalSortHeader
-                      label="推定月間再生数"
-                      active={currentSort === "monthlyViews"}
-                      onClick={() => pushGlobalSort("monthlyViews")}
-                    />
-                  </th>
-                  <th className="px-4 py-3 font-medium">競合度</th>
-                  <th className="px-4 py-3 font-medium">成長性</th>
-                  <th className="px-4 py-3 font-medium">参入魅力度</th>
-                  <th className="px-4 py-3 font-medium">取得状態</th>
-                  <th className="px-4 py-3 font-medium">操作</th>
-                </>
-              )}
-            </tr>
-          </thead>
+              </tr>
+            </thead>
 
-          <tbody className="divide-y divide-slate-200 bg-white/70">
-            {rows.map((channel) => {
-              const isLightLoading = lightLoadingIds.includes(channel.id);
-              const isDeepLoading = deepLoadingIds.includes(channel.id);
-              const viewsPerSub =
-                channel.subscriberCount > 0 && channel.avgViewsLast10
-                  ? channel.avgViewsLast10 / channel.subscriberCount
-                  : 0;
+            <tbody className="divide-y divide-slate-200 bg-white">
+              {rows.map((channel) => {
+                const isLightLoading = lightLoadingIds.includes(channel.id);
+                const isDeepLoading = deepLoadingIds.includes(channel.id);
+                const categoryLabel = channel.categoryGuess || "未分類";
 
-              return (
-                <tr key={channel.id} className="align-top">
-                  <td className="px-4 py-4">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-slate-300"
-                      checked={selectedIds.includes(channel.id)}
-                      onChange={() => toggleSelection(channel.id)}
-                    />
-                  </td>
+                if (!isSales) {
+                  const barWidth = getIncomeBarWidth(channel.estimatedMonthlyIncomeHigh, maxVisibleIncomeHigh);
 
-                  <td className="px-4 py-4">
-                    <img
-                      src={channel.thumbnailUrl || "https://placehold.co/64x64/e2e8f0/0f172a?text=TL"}
-                      alt={channel.title}
-                      className="h-12 w-12 rounded-2xl object-cover"
-                    />
-                  </td>
-
-                  <td className="px-4 py-4">
-                    <div className="max-w-[260px] space-y-1">
-                      <p className="font-medium text-slate-900">{channel.title}</p>
-                      <p className="text-xs text-slate-500">{truncate(channel.sourceQuery, 48)}</p>
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4 text-slate-700">{formatNumber(channel.subscriberCount)}</td>
-                  <td className="px-4 py-4 text-slate-700">{formatNumber(channel.videoCount)}</td>
-                  {isSales ? (
-                    <>
-                      <td className="px-4 py-4 text-slate-700">{channel.categoryGuess || "-"}</td>
-                      <td className="px-4 py-4 text-slate-700">{channel.regionGuess || "-"}</td>
-                      <td className="px-4 py-4">
-                        <ContactTypeBadge contactType={channel.contactType} />
-                      </td>
-                      <td className="px-4 py-4">
-                        <BestContactBadge method={channel.bestContactMethod} />
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="max-w-[220px] break-all text-slate-700">{channel.bestContactValue || "-"}</p>
-                      </td>
-                      <td className="px-4 py-4 text-slate-700">{formatNumber(channel.sourceQueries.length)} 件</td>
-                      <td className="px-4 py-4 text-slate-900">{formatNumber(channel.contactabilityScore)}</td>
-                      <td className="px-4 py-4">
-                        <div className="flex max-w-[220px] flex-wrap gap-2">
-                          <EnrichmentStatusBadge status={channel.basicFetchedAt ? "COMPLETED" : "IDLE"} label="基本" />
-                          <EnrichmentStatusBadge status={channel.lightEnrichmentStatus} label="動画" />
-                          <EnrichmentStatusBadge status={channel.deepEnrichmentStatus} label="外部" />
-                        </div>
-                        <div className="mt-2 space-y-1 text-xs text-slate-500">
-                          <p>基本: {formatDateTime(channel.basicFetchedAt)}</p>
-                          <p>動画: {formatDateTime(channel.lightEnrichmentUpdatedAt)}</p>
-                          <p>外部: {formatDateTime(channel.deepEnrichmentUpdatedAt)}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-slate-700">{formatNumber(channel.latestVideoScanCount)} 本</td>
-                      <td className="px-4 py-4">
-                        <ChannelStatusBadge status={channel.status} />
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex max-w-[180px] flex-wrap gap-1 text-xs text-slate-600">
-                          {channel.tags.length > 0 ? channel.tags.map((tag) => <span key={tag}>#{tag}</span>) : <span>-</span>}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="max-w-[220px] whitespace-pre-wrap break-words text-slate-600">
-                          {truncate(channel.note || "-", 80)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex flex-col gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => void runLightScan(channel.id)}
-                            disabled={isLightLoading}
-                          >
-                            <RefreshCw className={cn("mr-2 h-4 w-4", isLightLoading && "animate-spin")} />
-                            {isLightLoading
-                              ? "動画抽出中..."
-                              : channel.lightEnrichmentStatus === "COMPLETED"
-                                ? "動画抽出を再実行"
-                                : "動画抽出"}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => void runDeepScan(channel.id)}
-                            disabled={isDeepLoading}
-                          >
-                            <RefreshCw className={cn("mr-2 h-4 w-4", isDeepLoading && "animate-spin")} />
-                            {isDeepLoading ? "詳細走査中..." : "連絡先詳細検索"}
-                          </Button>
-                          <Button asChild size="sm" variant="ghost">
-                            <Link href={`/channels/${channel.id}?mode=${mode}`}>詳細を見る</Link>
-                          </Button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-4 py-4 text-slate-700">{formatNumber(channel.viewCount)}</td>
-                      <td className="px-4 py-4">
-                        <div className="min-w-[250px] rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                          <div className="grid grid-cols-3 gap-2 text-center">
-                            <div>
-                              <p className="text-[11px] text-slate-500">low</p>
-                              <p className="text-sm font-semibold text-slate-900">
-                                {formatCurrencyYen(channel.estimatedMonthlyIncomeLow)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-[11px] text-slate-500">base</p>
-                              <p className="text-sm font-semibold text-slate-950">
-                                {formatCurrencyYen(channel.estimatedMonthlyIncomeBase)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-[11px] text-slate-500">high</p>
-                              <p className="text-sm font-semibold text-emerald-700">
-                                {formatCurrencyYen(channel.estimatedMonthlyIncomeHigh)}
-                              </p>
-                            </div>
+                  return (
+                    <tr key={channel.id} className="align-top transition hover:bg-slate-50/80">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={channel.thumbnailUrl || "https://placehold.co/64x64/e2e8f0/0f172a?text=TL"}
+                            alt={channel.title}
+                            className="h-12 w-12 rounded-full object-cover"
+                          />
+                          <div className="min-w-0 space-y-1">
+                            <p className="truncate font-semibold text-slate-950">{channel.title}</p>
+                            <p className="text-xs text-slate-500">{formatCompactNumber(channel.subscriberCount)} 登録者</p>
                           </div>
-                          <p className="mt-2 text-[11px] text-slate-500">
-                            推定値です。実収益を保証するものではありません。
-                          </p>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-slate-900">{formatNumber(channel.avgViewsLast10)}</td>
-                      <td className="px-4 py-4 text-slate-700">{formatNumber(channel.medianViewsLast10)}</td>
-                      <td className="px-4 py-4 text-slate-700">{formatNumber(channel.postsLast30)}</td>
-                      <td className="px-4 py-4 text-slate-700">{getPostingFrequencyRank(channel.postsLast30)}</td>
-                      <td className="px-4 py-4 text-slate-700">{viewsPerSub ? `${viewsPerSub.toFixed(2)}x` : "-"}</td>
-                      <td className="px-4 py-4 text-slate-700">{formatPercent(channel.shortsRatio, 0)}</td>
-                      <td className="px-4 py-4 text-slate-700">{formatDateTime(channel.lastVideoPublishedAt)}</td>
-                      <td className="px-4 py-4 text-slate-900">{formatNumber(channel.monthlyViewsEstimate)}</td>
-                      <td className="px-4 py-4 text-slate-900">{formatNumber(channel.competitionScore)}</td>
-                      <td className="px-4 py-4 text-slate-900">{formatNumber(channel.growthScore)}</td>
-                      <td className="px-4 py-4 text-slate-900">{formatNumber(channel.opportunityScore)}</td>
-                      <td className="px-4 py-4">
-                        <div className="flex max-w-[220px] flex-wrap gap-2">
-                          <EnrichmentStatusBadge status={channel.basicFetchedAt ? "COMPLETED" : "IDLE"} label="基本" />
-                          <EnrichmentStatusBadge status={channel.lightEnrichmentStatus} label="分析" />
-                          <EnrichmentStatusBadge status={channel.deepEnrichmentStatus} label="外部" />
-                        </div>
-                        <div className="mt-2 space-y-1 text-xs text-slate-500">
-                          <p>基本: {formatDateTime(channel.basicFetchedAt)}</p>
-                          <p>分析: {formatDateTime(channel.lightEnrichmentUpdatedAt)}</p>
+                      <td className="px-4 py-5">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-3 py-1 text-xs font-medium",
+                            getCategoryPillClass(categoryLabel),
+                          )}
+                        >
+                          {categoryLabel}
+                        </span>
+                      </td>
+                      <td className="px-4 py-5 font-medium text-slate-900">{formatCompactNumber(channel.subscriberCount)}</td>
+                      <td className="px-4 py-5 text-slate-700">{formatCompactNumber(channel.avgViewsLast10)}</td>
+                      <td className="px-4 py-5">
+                        <div className="space-y-1">
+                          <p className="font-medium text-slate-900">{getPostingFrequencyText(channel.postsLast30)}</p>
+                          <p className="text-xs text-slate-500">直近30日 {formatNumber(channel.postsLast30)} 本</p>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="flex flex-col gap-2">
-                          <Button asChild size="sm" variant="ghost">
-                            <Link href={`/channels/${channel.id}?mode=${mode}`}>詳細を見る</Link>
-                          </Button>
+                      <td className="px-4 py-5">
+                        <div className="min-w-[220px] max-w-[260px] space-y-3">
+                          <div className="space-y-1">
+                            <p className="text-xl font-semibold tracking-tight text-slate-950">
+                              {formatCurrencyYen(channel.estimatedMonthlyIncomeBase)}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              low {formatCurrencyYen(channel.estimatedMonthlyIncomeLow)} / high{" "}
+                              {formatCurrencyYen(channel.estimatedMonthlyIncomeHigh)}
+                            </p>
+                          </div>
+                          <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500"
+                              style={{ width: `${barWidth}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex items-center justify-end gap-3">
                           {channel.lightEnrichmentStatus === "FAILED" ? (
                             <Button
                               type="button"
@@ -769,29 +683,129 @@ export function ChannelsTableClient({
                               {isLightLoading ? "再取得中..." : "再取得"}
                             </Button>
                           ) : null}
-                          {isLightLoading ? <p className="text-xs text-blue-600">この行を分析中です...</p> : null}
+                          <Button asChild size="sm" variant="ghost" className="text-blue-600 hover:text-blue-700">
+                            <Link href={`/channels/${channel.id}?mode=${mode}`}>詳細 →</Link>
+                          </Button>
                         </div>
                       </td>
-                    </>
-                  )}
-                </tr>
-              );
-            })}
+                    </tr>
+                  );
+                }
 
-            {lockedCount > 0
-              ? Array.from({ length: Math.min(3, lockedCount) }).map((_, index) => (
-                  <tr key={`locked-${index}`} className="opacity-70">
-                    <td className="px-4 py-4" colSpan={columnCount}>
-                      <div className="flex items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4">
-                        <div className="blur-[3px]">11件目以降のチャンネルは無料プランではロック表示です。</div>
-                        {plan === "FREE" ? <UpgradeDialog triggerLabel="ロックを解除" /> : null}
+                return (
+                  <tr key={channel.id} className="align-top">
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300"
+                        checked={selectedIds.includes(channel.id)}
+                        onChange={() => toggleSelection(channel.id)}
+                      />
+                    </td>
+                    <td className="px-4 py-4">
+                      <img
+                        src={channel.thumbnailUrl || "https://placehold.co/64x64/e2e8f0/0f172a?text=TL"}
+                        alt={channel.title}
+                        className="h-12 w-12 rounded-2xl object-cover"
+                      />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="max-w-[260px] space-y-1">
+                        <p className="font-medium text-slate-900">{channel.title}</p>
+                        <p className="text-xs text-slate-500">{truncate(channel.sourceQuery, 48)}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-slate-700">{formatNumber(channel.subscriberCount)}</td>
+                    <td className="px-4 py-4 text-slate-700">{formatNumber(channel.videoCount)}</td>
+                    <td className="px-4 py-4 text-slate-700">{channel.categoryGuess || "-"}</td>
+                    <td className="px-4 py-4 text-slate-700">{channel.regionGuess || "-"}</td>
+                    <td className="px-4 py-4">
+                      <ContactTypeBadge contactType={channel.contactType} />
+                    </td>
+                    <td className="px-4 py-4">
+                      <BestContactBadge method={channel.bestContactMethod} />
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="max-w-[220px] break-all text-slate-700">{channel.bestContactValue || "-"}</p>
+                    </td>
+                    <td className="px-4 py-4 text-slate-700">{formatNumber(channel.sourceQueries.length)} 件</td>
+                    <td className="px-4 py-4 text-slate-900">{formatNumber(channel.contactabilityScore)}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex max-w-[220px] flex-wrap gap-2">
+                        <EnrichmentStatusBadge status={channel.basicFetchedAt ? "COMPLETED" : "IDLE"} label="基本" />
+                        <EnrichmentStatusBadge status={channel.lightEnrichmentStatus} label="動画" />
+                        <EnrichmentStatusBadge status={channel.deepEnrichmentStatus} label="外部" />
+                      </div>
+                      <div className="mt-2 space-y-1 text-xs text-slate-500">
+                        <p>基本: {formatDateTime(channel.basicFetchedAt)}</p>
+                        <p>動画: {formatDateTime(channel.lightEnrichmentUpdatedAt)}</p>
+                        <p>外部: {formatDateTime(channel.deepEnrichmentUpdatedAt)}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-slate-700">{formatNumber(channel.latestVideoScanCount)} 本</td>
+                    <td className="px-4 py-4">
+                      <ChannelStatusBadge status={channel.status} />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex max-w-[180px] flex-wrap gap-1 text-xs text-slate-600">
+                        {channel.tags.length > 0 ? channel.tags.map((tag) => <span key={tag}>#{tag}</span>) : <span>-</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="max-w-[220px] whitespace-pre-wrap break-words text-slate-600">
+                        {truncate(channel.note || "-", 80)}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => void runLightScan(channel.id)}
+                          disabled={isLightLoading}
+                        >
+                          <RefreshCw className={cn("mr-2 h-4 w-4", isLightLoading && "animate-spin")} />
+                          {isLightLoading
+                            ? "動画抽出中..."
+                            : channel.lightEnrichmentStatus === "COMPLETED"
+                              ? "動画抽出を更新"
+                              : "動画抽出"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void runDeepScan(channel.id)}
+                          disabled={isDeepLoading}
+                        >
+                          <RefreshCw className={cn("mr-2 h-4 w-4", isDeepLoading && "animate-spin")} />
+                          {isDeepLoading ? "詳細走査中..." : "連絡先詳細検索"}
+                        </Button>
+                        <Button asChild size="sm" variant="ghost">
+                          <Link href={`/channels/${channel.id}?mode=${mode}`}>詳細を見る</Link>
+                        </Button>
                       </div>
                     </td>
                   </tr>
-                ))
-              : null}
-          </tbody>
-        </table>
+                );
+              })}
+
+              {lockedCount > 0
+                ? Array.from({ length: Math.min(3, lockedCount) }).map((_, index) => (
+                    <tr key={`locked-${index}`} className="opacity-70">
+                      <td className="px-4 py-4" colSpan={columnCount}>
+                        <div className="flex items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4">
+                          <div className="blur-[3px]">11件目以降のチャンネルは無料版ではロック表示です。</div>
+                          {plan === "FREE" ? <UpgradeDialog triggerLabel="ロックを解除" /> : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                : null}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

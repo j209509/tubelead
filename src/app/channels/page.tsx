@@ -5,7 +5,7 @@ import { ChannelsTableClient } from "@/components/channels/channels-table-client
 import { UpgradeDialog } from "@/components/channels/upgrade-dialog";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { CHANNEL_SORT_LABELS, MODE_LABELS, type AppModeValue } from "@/lib/constants";
 import { getChannelList } from "@/lib/channels";
@@ -57,6 +57,24 @@ function countRivalActiveFilters(filters: ChannelFiltersInput) {
     filters.minEstimatedMonthlyIncomeBase > 0,
     filters.maxShortsRatio < 100,
     filters.publishedWithinDays > 0,
+  ].filter(Boolean).length;
+}
+
+function countSalesActiveFilters(filters: ChannelFiltersInput) {
+  return [
+    Boolean(filters.q),
+    Boolean(filters.sourceQuery),
+    filters.minSubscribers > 0,
+    filters.minVideos > 0,
+    filters.minContactabilityScore > 0,
+    filters.hasEmail,
+    filters.hasForm,
+    filters.hasSocial,
+    filters.hasOfficialSite,
+    filters.hasVideoContact,
+    filters.hasExternalContact,
+    filters.onlyUnreviewed,
+    filters.sort !== "updated",
   ].filter(Boolean).length;
 }
 
@@ -173,20 +191,41 @@ function FilterInput({
 }
 
 function SalesFilters({ filters }: { filters: ChannelFiltersInput }) {
+  const activeFilterCount = countSalesActiveFilters(filters);
+
   return (
-    <Card className="rounded-[28px] border-slate-200 shadow-sm">
-      <CardHeader>
-        <CardTitle>フィルタ</CardTitle>
-        <CardDescription>営業モードでは連絡可能性と抽出済み情報を中心に絞り込みます。</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <details className="group rounded-[28px] border border-slate-200 bg-white shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+            <SlidersHorizontal className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-slate-950">フィルタ</p>
+            <p className="text-sm text-slate-500">
+              営業モードでは連絡先と抽出済み情報を中心に絞り込みます。初期状態では折りたたみ表示です。
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 md:inline-flex">
+            条件 {activeFilterCount} 件
+          </div>
+          <div className="hidden items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 md:inline-flex">
+            並び順: {CHANNEL_SORT_LABELS[filters.sort]}
+          </div>
+          <ChevronDown className="h-5 w-5 text-slate-400 transition group-open:rotate-180" />
+        </div>
+      </summary>
+
+      <div className="border-t border-slate-200 px-6 py-6">
         <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-6" method="GET">
           <input type="hidden" name="page" value="1" />
           <input type="hidden" name="mode" value="sales" />
 
           <div className="grid gap-2 xl:col-span-2">
             <Label htmlFor="channel-filter-q-sales" className="text-xs font-medium text-slate-500">
-              キーワード / チャンネル名
+              キーワード
             </Label>
             <input
               id="channel-filter-q-sales"
@@ -200,7 +239,7 @@ function SalesFilters({ filters }: { filters: ChannelFiltersInput }) {
           <FilterInput
             id="channel-filter-source-query-sales"
             name="sourceQuery"
-            label="検索ソース語"
+            label="sourceQuery"
             defaultValue={filters.sourceQuery}
             placeholder="sourceQueries から検索"
           />
@@ -251,44 +290,44 @@ function SalesFilters({ filters }: { filters: ChannelFiltersInput }) {
             </select>
           </div>
 
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
             <input type="checkbox" name="hasEmail" value="true" defaultChecked={filters.hasEmail} />
             メールあり
           </label>
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
             <input type="checkbox" name="hasForm" value="true" defaultChecked={filters.hasForm} />
             フォームあり
           </label>
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
             <input type="checkbox" name="hasSocial" value="true" defaultChecked={filters.hasSocial} />
             SNSあり
           </label>
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
             <input type="checkbox" name="hasOfficialSite" value="true" defaultChecked={filters.hasOfficialSite} />
             公式サイトあり
           </label>
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
             <input type="checkbox" name="hasVideoContact" value="true" defaultChecked={filters.hasVideoContact} />
             動画概要欄から抽出あり
           </label>
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
             <input type="checkbox" name="hasExternalContact" value="true" defaultChecked={filters.hasExternalContact} />
             外部サイトから抽出あり
           </label>
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
             <input type="checkbox" name="onlyUnreviewed" value="true" defaultChecked={filters.onlyUnreviewed} />
             未確認のみ
           </label>
 
           <div className="flex gap-3 md:col-span-2 xl:col-span-6 xl:justify-end">
-            <Button type="submit">絞り込む</Button>
             <Button asChild variant="secondary">
               <Link href="/channels?mode=sales">リセット</Link>
             </Button>
+            <Button type="submit">絞り込む</Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </details>
   );
 }
 
@@ -538,15 +577,28 @@ export default async function ChannelsPage({
       ) : (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-            {salesSummaryCards.map((card) => (
-              <Card key={card.key}>
-                <CardContent className="p-6">
-                  <p className="text-sm text-slate-500">{card.label}</p>
-                  <p className="mt-3 text-3xl font-semibold text-slate-950">
-                    {formatNumber(data.stats[card.key as keyof typeof data.stats])}
-                  </p>
-                </CardContent>
-              </Card>
+            {salesSummaryCards.map((card, index) => (
+              <div
+                key={card.key}
+                className={index === 0 ? "rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm" : "rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"}
+              >
+                {index === 0 ? (
+                  <div className="border-l-4 border-blue-500 pl-4">
+                    <p className="text-sm text-slate-500">{card.label}</p>
+                    <p className="mt-3 text-5xl font-semibold tracking-tight text-slate-950">
+                      {formatNumber(data.stats[card.key as keyof typeof data.stats])}
+                    </p>
+                    <p className="mt-2 text-sm text-emerald-600">保存済みチャンネルベース</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-slate-500">{card.label}</p>
+                    <p className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
+                      {formatNumber(data.stats[card.key as keyof typeof data.stats])}
+                    </p>
+                  </>
+                )}
+              </div>
             ))}
           </section>
 

@@ -1,13 +1,13 @@
 "use client";
 
-import { Search, Sparkles } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { SerializedSearchHistory } from "@/lib/channels";
@@ -16,15 +16,15 @@ import { searchFormSchema, type SearchFormInput } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 
 const progressSteps = [
-  "YouTubeチャンネル検索中",
+  "チャンネル検索中",
   "基本情報を整理中",
-  "ローカルへ保存中",
-  "一覧画面へ移動中",
+  "保存中",
+  "一覧へ移動中",
 ];
 
 const modeDescriptions: Record<AppModeValue, string> = {
-  sales: "連絡先調査と営業候補の整理を優先します。",
-  rival: "想定月収と直近動画の強さを見ながら比較するモードです。",
+  sales: "連絡先調査と営業候補の整理を優先",
+  rival: "想定月収と直近動画の強さを比較",
 };
 
 type SearchFormPanelProps = {

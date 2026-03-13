@@ -1,14 +1,35 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f2ec;
-  --foreground: #111827;
-  --panel: #fffdf9;
-  --muted: #6b7280;
-  --border: rgba(15, 23, 42, 0.1);
-  --accent: #1d4ed8;
-  --accent-soft: rgba(29, 78, 216, 0.12);
-  --success: #0f766e;
+  /* 背景・パネル */
+  --background: #fafafa;
+  --foreground: #18181b;
+  --panel: #ffffff;
+  --surface-elevated: #ffffff;
+  
+  /* テキスト階層 */
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --text-tertiary: #a1a1aa;
+  
+  /* ボーダー */
+  --border: #e4e4e7;
+  --border-subtle: #f4f4f5;
+  
+  /* ブランド色（操作・リンク） */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.08);
+  
+  /* 状態色 */
+  --success: #059669;
+  --success-soft: rgba(5, 150, 105, 0.08);
+  --warning: #d97706;
+  --warning-soft: rgba(217, 119, 6, 0.08);
+  --error: #dc2626;
+  --error-soft: rgba(220, 38, 38, 0.08);
+  --info: #0284c7;
+  --info-soft: rgba(2, 132, 199, 0.08);
 }
 
 @theme inline {
@@ -22,9 +43,6 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body), sans-serif;
-  background-image:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.92), transparent 32%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(245, 242, 236, 0.96));
 }
 
 * {
@@ -36,40 +54,44 @@ a {
   text-decoration: none;
 }
 
-button[class*="bg-slate-900"],
-button[class*="bg-slate-950"],
-button[class*="bg-rose-600"],
-a[class*="bg-slate-900"],
-a[class*="bg-slate-950"],
-a[class*="bg-rose-600"] {
+button[class*="bg-zinc-900"],
+button[class*="bg-zinc-950"],
+button[class*="bg-red-600"],
+a[class*="bg-zinc-900"],
+a[class*="bg-zinc-950"],
+a[class*="bg-red-600"] {
   color: #ffffff !important;
 }
 
-button[class*="bg-slate-900"] *,
-button[class*="bg-slate-950"] *,
-button[class*="bg-rose-600"] *,
-a[class*="bg-slate-900"] *,
-a[class*="bg-slate-950"] *,
-a[class*="bg-rose-600"] * {
+button[class*="bg-zinc-900"] *,
+button[class*="bg-zinc-950"] *,
+button[class*="bg-red-600"] *,
+a[class*="bg-zinc-900"] *,
+a[class*="bg-zinc-950"] *,
+a[class*="bg-red-600"] * {
   color: inherit !important;
 }
 
-button[class*="bg-slate-900"] svg,
-button[class*="bg-slate-950"] svg,
-button[class*="bg-rose-600"] svg,
-a[class*="bg-slate-900"] svg,
-a[class*="bg-slate-950"] svg,
-a[class*="bg-rose-600"] svg {
+button[class*="bg-zinc-900"] svg,
+button[class*="bg-zinc-950"] svg,
+button[class*="bg-red-600"] svg,
+a[class*="bg-zinc-900"] svg,
+a[class*="bg-zinc-950"] svg,
+a[class*="bg-red-600"] svg {
   stroke: currentColor;
 }
 
 ::selection {
-  background: rgba(29, 78, 216, 0.16);
+  background: rgba(37, 99, 235, 0.16);
 }
 
 .surface-panel {
-  background: color-mix(in srgb, var(--panel) 92%, white 8%);
-  backdrop-filter: blur(18px);
+  background: var(--panel);
+}
+
+.surface-elevated {
+  background: var(--surface-elevated);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02);
 }
 
 .nav-pill-active,
@@ -78,21 +100,20 @@ a[class*="bg-rose-600"] svg {
 }
 
 .text-muted {
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
-.page-grid {
-  position: relative;
+.text-tertiary {
+  color: var(--text-tertiary);
 }
 
-.page-grid::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(to right, rgba(15, 23, 42, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent 86%);
+/* テーブルのホバー */
+.table-row-hover:hover {
+  background: var(--accent-soft);
+}
+
+/* 数値セルの右寄せ用 */
+.cell-numeric {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }

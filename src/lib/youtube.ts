@@ -854,7 +854,8 @@ export async function searchChannels(
       });
 
       if (params.preferJapanese) {
-        query.set("regionCode", "JP");
+        // 「日本語優先」は表示順で寄せる方針にして、API 側では言語ヒントだけを渡す。
+        // regionCode=JP を固定すると候補母数が不自然に小さくなりやすい。
         query.set("relevanceLanguage", "ja");
       }
 

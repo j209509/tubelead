@@ -18,6 +18,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const data = await getChannelList(parsed.data, { includeAutoScanIds: parsed.data.mode === "rival" });
+  const data = await getChannelList(parsed.data, { includeAutoScanIds: true });
   return NextResponse.json(data);
 }

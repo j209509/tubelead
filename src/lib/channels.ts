@@ -817,38 +817,36 @@ export async function getChannelList(
   const stats = await getDashboardStats(where);
   const total = await prisma.channel.count({ where });
   const orderBy = buildOrderBy(filters.sort);
-  const autoScanIds =
-    filters.mode === "rival" && options?.includeAutoScanIds
-      ? (
-          await prisma.channel.findMany({
-            where: {
-              AND: [where, { lightEnrichmentStatus: { not: "COMPLETED" } }],
-            },
-            select: { id: true },
-            orderBy: { updatedAt: "desc" },
-          })
-        ).map((row) => row.id)
-      : [];
-  const autoScanStatus =
-    filters.mode === "rival" && options?.includeAutoScanIds
-      ? await (async () => {
-          const [targetCount, completedCount, pendingCount, processingCount, failedCount] = await Promise.all([
-            prisma.channel.count({ where }),
-            prisma.channel.count({ where: { AND: [where, { lightEnrichmentStatus: "COMPLETED" }] } }),
-            prisma.channel.count({ where: { AND: [where, { lightEnrichmentStatus: "PENDING" }] } }),
-            prisma.channel.count({ where: { AND: [where, { lightEnrichmentStatus: "PROCESSING" }] } }),
-            prisma.channel.count({ where: { AND: [where, { lightEnrichmentStatus: "FAILED" }] } }),
-          ]);
+  const autoScanIds = options?.includeAutoScanIds
+    ? (
+        await prisma.channel.findMany({
+          where: {
+            AND: [where, { lightEnrichmentStatus: { not: "COMPLETED" } }],
+          },
+          select: { id: true },
+          orderBy: { updatedAt: "desc" },
+        })
+      ).map((row) => row.id)
+    : [];
+  const autoScanStatus = options?.includeAutoScanIds
+    ? await (async () => {
+        const [targetCount, completedCount, pendingCount, processingCount, failedCount] = await Promise.all([
+          prisma.channel.count({ where }),
+          prisma.channel.count({ where: { AND: [where, { lightEnrichmentStatus: "COMPLETED" }] } }),
+          prisma.channel.count({ where: { AND: [where, { lightEnrichmentStatus: "PENDING" }] } }),
+          prisma.channel.count({ where: { AND: [where, { lightEnrichmentStatus: "PROCESSING" }] } }),
+          prisma.channel.count({ where: { AND: [where, { lightEnrichmentStatus: "FAILED" }] } }),
+        ]);
 
-          return {
-            targetCount,
-            completedCount,
-            pendingCount,
-            processingCount,
-            failedCount,
-          };
-        })()
-      : null;
+        return {
+          targetCount,
+          completedCount,
+          pendingCount,
+          processingCount,
+          failedCount,
+        };
+      })()
+    : null;
 
   if (filters.mode === "rival") {
     const rows = await prisma.channel.findMany({

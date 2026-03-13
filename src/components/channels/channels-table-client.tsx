@@ -47,6 +47,7 @@ type RowPatch = Partial<
 >;
 
 const AUTO_RIVAL_LIGHT_CONCURRENCY = 4;
+const AUTO_SALES_LIGHT_CONCURRENCY = 2;
 const CATEGORY_PILL_STYLES = [
   "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
   "bg-violet-50 text-violet-700 ring-1 ring-violet-100",
@@ -105,12 +106,18 @@ function GlobalSortHeader({
   );
 }
 
-function getRivalStatusMeta(status: AutoScanStatus | null, totalCount: number) {
+function getAutoScanStatusMeta(
+  status: AutoScanStatus | null,
+  totalCount: number,
+  mode: AppModeValue,
+) {
+  const subject = mode === "sales" ? "連絡先補完" : "分析補完";
+
   if (!status) {
     return {
       tone: "slate" as const,
       label: "待機中",
-      description: `対象 ${formatNumber(totalCount)} 件の取得状況を集計しています。`,
+      description: `対象 ${formatNumber(totalCount)} 件の${subject}状況を集計しています。`,
     };
   }
 
@@ -126,7 +133,7 @@ function getRivalStatusMeta(status: AutoScanStatus | null, totalCount: number) {
     return {
       tone: "green" as const,
       label: "調査完了",
-      description: `全 ${formatNumber(status.targetCount)} 件の推定月収と直近動画指標の取得が完了しました。`,
+      description: `全 ${formatNumber(status.targetCount)} 件の${subject}が完了しました。`,
     };
   }
 
@@ -272,7 +279,10 @@ export function ChannelsTableClient({
     [rows],
   );
 
-  const rivalStatusMeta = useMemo(() => getRivalStatusMeta(autoScanStatus, totalCount), [autoScanStatus, totalCount]);
+  const autoScanStatusMeta = useMemo(
+    () => getAutoScanStatusMeta(autoScanStatus, totalCount, mode),
+    [autoScanStatus, mode, totalCount],
+  );
 
   const maxVisibleIncomeHigh = useMemo(
     () =>
@@ -309,10 +319,6 @@ export function ChannelsTableClient({
   }, [currentQueryString]);
 
   const scheduleVisiblePageSync = useCallback(() => {
-    if (mode !== "rival") {
-      return;
-    }
-
     if (syncTimerRef.current) {
       window.clearTimeout(syncTimerRef.current);
     }
@@ -320,7 +326,7 @@ export function ChannelsTableClient({
     syncTimerRef.current = window.setTimeout(() => {
       void syncVisiblePage();
     }, 700);
-  }, [mode, syncVisiblePage]);
+  }, [syncVisiblePage]);
 
   const replaceRow = useCallback((next: SerializedChannel) => {
     setRows((current) => current.map((row) => (row.id === next.id ? next : row)));
@@ -413,11 +419,8 @@ export function ChannelsTableClient({
   );
 
   useEffect(() => {
-    if (mode !== "rival") {
-      return;
-    }
-
-    const availableSlots = Math.max(0, AUTO_RIVAL_LIGHT_CONCURRENCY - lightLoadingIds.length);
+    const concurrency = mode === "sales" ? AUTO_SALES_LIGHT_CONCURRENCY : AUTO_RIVAL_LIGHT_CONCURRENCY;
+    const availableSlots = Math.max(0, concurrency - lightLoadingIds.length);
     if (availableSlots === 0) {
       return;
     }
@@ -484,33 +487,30 @@ export function ChannelsTableClient({
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-white px-5 py-4 shadow-sm">
-        {isSales ? (
-          <>
-            <p className="text-sm font-medium text-slate-900">
-              検索直後は基本情報のみを表示し、あとから動画分析や連絡先補完を順次反映します。
-            </p>
-            <p className="text-xs text-slate-500">
-              基本取得済み {formatNumber(visibleSummary.basicReadyCount)} 件 / 動画分析済み{" "}
-              {formatNumber(visibleSummary.lightCompletedCount)} 件 / 補完待ち{" "}
-              {formatNumber(visibleSummary.lightPendingCount)} 件 / 分析中{" "}
-              {formatNumber(visibleSummary.lightProcessingCount)} 件 / 外部走査済み{" "}
-              {formatNumber(visibleSummary.deepCompletedCount)} 件
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge tone={rivalStatusMeta.tone}>{rivalStatusMeta.label}</Badge>
-              <p className="text-sm font-medium text-slate-900">{rivalStatusMeta.description}</p>
-            </div>
-            <p className="text-xs text-slate-500">
-              完了 {formatNumber(autoScanStatus?.completedCount || 0)} 件 / 処理中{" "}
-              {formatNumber(autoScanStatus?.processingCount || 0)} 件 / 待機{" "}
-              {formatNumber(autoScanStatus?.pendingCount || 0)} 件 / 失敗{" "}
-              {formatNumber(autoScanStatus?.failedCount || 0)} 件
-            </p>
-          </>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge tone={autoScanStatusMeta.tone}>{autoScanStatusMeta.label}</Badge>
+          <p className="text-sm font-medium text-slate-900">{autoScanStatusMeta.description}</p>
+        </div>
+        <p className="text-xs text-slate-500">
+          {"完了 "}
+          {formatNumber(autoScanStatus?.completedCount ?? visibleSummary.lightCompletedCount)}
+          {" 件 / 処理中 "}
+          {formatNumber(autoScanStatus?.processingCount ?? visibleSummary.lightProcessingCount)}
+          {" 件 / 待機 "}
+          {formatNumber(autoScanStatus?.pendingCount ?? visibleSummary.lightPendingCount)}
+          {" 件 / 失敗 "}
+          {formatNumber(autoScanStatus?.failedCount ?? 0)}
+          {" 件"}
+          {isSales ? (
+            <>
+              {" ・ 現在表示 "}
+              {formatNumber(visibleSummary.basicReadyCount)}
+              {" 件 / 外部走査完了 "}
+              {formatNumber(visibleSummary.deepCompletedCount)}
+              {" 件"}
+            </>
+          ) : null}
+        </p>
 
         <div className="flex flex-wrap items-center gap-3">
           {isSales ? (

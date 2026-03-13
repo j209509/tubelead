@@ -530,7 +530,7 @@ export default async function ChannelsPage({
       : baseFilters.mode === "rival"
         ? { ...baseFilters, sort: "incomeHigh" as const }
         : { ...baseFilters, sort: "contactPriority" as const };
-  const data = await getChannelList(filters, { includeAutoScanIds: filters.mode === "rival" });
+  const data = await getChannelList(filters, { includeAutoScanIds: true });
   const rivalSummary = filters.mode === "rival" ? buildRivalSummary(data.items, data.total) : null;
 
   const actions = (

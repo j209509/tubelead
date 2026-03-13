@@ -6,18 +6,19 @@ import {
   ExternalLink,
   Mail,
   Search,
-  Sparkles,
   TrendingUp,
   Users,
 } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardStats, getRecentSearchHistory, type SerializedSearchHistory } from "@/lib/channels";
 import { formatDate, formatNumber } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+type IconType = React.ComponentType<{ className?: string }>;
 
 function buildHistoryHref(history: SerializedSearchHistory) {
   return `/search?keyword=${encodeURIComponent(history.conditions.keyword)}&mode=${history.conditions.mode}&minSubscribers=${
@@ -28,60 +29,60 @@ function buildHistoryHref(history: SerializedSearchHistory) {
 }
 
 function ModeCard({
+  label,
   title,
-  subtitle,
   description,
   points,
   href,
   cta,
   icon,
-  theme,
+  tone,
 }: {
+  label: string;
   title: string;
-  subtitle: string;
   description: string;
   points: string[];
   href: string;
   cta: string;
-  icon: React.ComponentType<{ className?: string }>;
-  theme: "sales" | "rival";
+  icon: IconType;
+  tone: "sales" | "rival";
 }) {
   const Icon = icon;
   const styles =
-    theme === "sales"
+    tone === "sales"
       ? {
           card:
-            "border-blue-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(239,246,255,0.72)_100%)] shadow-[0_36px_90px_-62px_rgba(37,99,235,0.55)]",
-          orb: "bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.2),transparent_42%)]",
-          iconWrap: "bg-blue-600 text-white shadow-[0_16px_32px_-20px_rgba(37,99,235,0.8)]",
-          button: "bg-blue-600 hover:bg-blue-700 text-white",
+            "border-blue-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(239,246,255,0.8)_100%)] shadow-[0_30px_80px_-56px_rgba(37,99,235,0.55)]",
+          hover: "hover:border-blue-300 hover:shadow-[0_38px_90px_-56px_rgba(37,99,235,0.62)]",
+          orb: "bg-[radial-gradient(circle_at_top_right,rgba(191,219,254,0.55),transparent_42%)]",
+          iconWrap: "bg-blue-600 text-white shadow-[0_20px_34px_-20px_rgba(37,99,235,0.9)]",
+          label: "text-blue-700",
           bullet: "bg-blue-600",
-          accent: "text-blue-700",
+          button: "bg-blue-600 hover:bg-blue-700 text-white",
         }
       : {
           card:
-            "border-fuchsia-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(250,245,255,0.9)_100%)] shadow-[0_36px_90px_-62px_rgba(168,85,247,0.55)]",
-          orb: "bg-[radial-gradient(circle_at_top_right,rgba(216,180,254,0.2),transparent_42%)]",
-          iconWrap: "bg-fuchsia-600 text-white shadow-[0_16px_32px_-20px_rgba(168,85,247,0.8)]",
-          button: "bg-fuchsia-600 hover:bg-fuchsia-700 text-white",
+            "border-fuchsia-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(250,245,255,0.92)_100%)] shadow-[0_30px_80px_-56px_rgba(168,85,247,0.55)]",
+          hover: "hover:border-fuchsia-300 hover:shadow-[0_38px_90px_-56px_rgba(168,85,247,0.62)]",
+          orb: "bg-[radial-gradient(circle_at_top_right,rgba(233,213,255,0.55),transparent_42%)]",
+          iconWrap: "bg-fuchsia-600 text-white shadow-[0_20px_34px_-20px_rgba(168,85,247,0.9)]",
+          label: "text-fuchsia-700",
           bullet: "bg-fuchsia-600",
-          accent: "text-fuchsia-700",
+          button: "bg-fuchsia-600 hover:bg-fuchsia-700 text-white",
         };
 
   return (
-    <Card className={`relative overflow-hidden rounded-[30px] ${styles.card}`}>
+    <Card className={`group relative overflow-hidden rounded-[28px] transition ${styles.card} ${styles.hover}`}>
       <div className={`absolute inset-0 ${styles.orb}`} />
-      <CardContent className="relative flex h-full flex-col p-7">
+      <CardContent className="relative flex h-full flex-col p-6 md:p-7">
         <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${styles.iconWrap}`}>
           <Icon className="h-6 w-6" />
         </div>
 
-        <div className="mt-7 space-y-3">
-          <div>
-            <p className={`text-sm font-medium ${styles.accent}`}>{subtitle}</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{title}</h2>
-          </div>
-          <p className="text-sm leading-7 text-slate-600">{description}</p>
+        <div className="mt-6">
+          <p className={`text-sm font-medium ${styles.label}`}>{label}</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{title}</h2>
+          <p className="mt-4 text-sm leading-7 text-slate-600">{description}</p>
         </div>
 
         <ul className="mt-6 space-y-3 text-sm text-slate-600">
@@ -114,56 +115,77 @@ function MetricCard({
   label: string;
   value: number;
   description: string;
-  icon: React.ComponentType<{ className?: string }>;
-  tone: "dark" | "green" | "violet" | "amber";
+  icon: IconType;
+  tone: "slate" | "green" | "violet" | "amber";
 }) {
   const Icon = icon;
   const styles =
-    tone === "dark"
-      ? {
-          card: "border-slate-900 bg-slate-950 text-white shadow-[0_30px_70px_-48px_rgba(15,23,42,0.9)]",
-          iconWrap: "bg-white/10 text-white",
-          label: "text-slate-300",
-          value: "text-white",
-          description: "text-slate-400",
-        }
+    tone === "slate"
+      ? { iconWrap: "bg-slate-100 text-slate-500", value: "text-slate-950", dot: "bg-slate-300" }
       : tone === "green"
-        ? {
-            card: "border-emerald-200 bg-white",
-            iconWrap: "bg-emerald-50 text-emerald-600",
-            label: "text-slate-500",
-            value: "text-slate-950",
-            description: "text-slate-500",
-          }
+        ? { iconWrap: "bg-emerald-50 text-emerald-600", value: "text-slate-950", dot: "bg-emerald-500" }
         : tone === "violet"
-          ? {
-              card: "border-violet-200 bg-white",
-              iconWrap: "bg-violet-50 text-violet-600",
-              label: "text-slate-500",
-              value: "text-slate-950",
-              description: "text-slate-500",
-            }
-          : {
-              card: "border-amber-200 bg-white",
-              iconWrap: "bg-amber-50 text-amber-500",
-              label: "text-slate-500",
-              value: "text-slate-950",
-              description: "text-slate-500",
-            };
+          ? { iconWrap: "bg-violet-50 text-violet-600", value: "text-slate-950", dot: "bg-violet-500" }
+          : { iconWrap: "bg-amber-50 text-amber-500", value: "text-slate-950", dot: "bg-amber-500" };
 
   return (
-    <Card className={`rounded-[28px] ${styles.card}`}>
+    <Card className="rounded-[24px] border-slate-200 bg-white shadow-[0_18px_45px_-40px_rgba(15,23,42,0.45)]">
       <CardContent className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className={`text-sm ${styles.label}`}>{label}</p>
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${styles.dot}`} />
+              <p className="text-sm text-slate-500">{label}</p>
+            </div>
             <p className={`mt-5 text-4xl font-semibold tracking-tight ${styles.value}`}>{formatNumber(value)}</p>
           </div>
           <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${styles.iconWrap}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
-        <p className={`mt-3 text-sm leading-6 ${styles.description}`}>{description}</p>
+        <p className="mt-3 text-sm leading-6 text-slate-500">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CapabilityCard({
+  title,
+  description,
+  tone,
+  items,
+}: {
+  title: string;
+  description: string;
+  tone: "sales" | "rival";
+  items: Array<{ label: string; value: string }>;
+}) {
+  const styles =
+    tone === "sales"
+      ? {
+          card: "border-blue-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(239,246,255,0.55)_100%)]",
+          label: "text-blue-700",
+          tile: "border-blue-100 bg-white",
+        }
+      : {
+          card: "border-fuchsia-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(250,245,255,0.75)_100%)]",
+          label: "text-fuchsia-700",
+          tile: "border-fuchsia-100 bg-white",
+        };
+
+  return (
+    <Card className={`rounded-[28px] ${styles.card}`}>
+      <CardHeader className="p-6 md:p-7">
+        <p className={`text-sm font-medium ${styles.label}`}>{title}</p>
+        <CardTitle className="mt-2 text-3xl tracking-tight text-slate-950">{description}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3 p-6 pt-0 md:grid-cols-2 md:p-7 md:pt-0">
+        {items.map((item) => (
+          <div key={item.label} className={`rounded-2xl border p-4 ${styles.tile}`}>
+            <p className="text-xs font-medium tracking-[0.08em] text-slate-500 uppercase">{item.label}</p>
+            <p className="mt-2 text-sm leading-7 text-slate-700">{item.value}</p>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );
@@ -175,113 +197,61 @@ export default async function Home() {
   return (
     <AppShell>
       <div className="space-y-10">
-        <section className="rounded-[36px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(248,250,252,0.96)_100%)] px-6 py-8 shadow-[0_30px_90px_-72px_rgba(15,23,42,0.45)] md:px-8 md:py-10">
+        <section className="rounded-[36px] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(248,250,252,0.98)_100%)] px-6 py-10 shadow-[0_28px_80px_-64px_rgba(15,23,42,0.45)] md:px-10 md:py-12">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-600 shadow-sm">
+            <div className="inline-flex rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-600">
               検索・保存・一覧管理・AI文面・ライバル調査
             </div>
-            <h1 className="mt-6 font-serif text-4xl leading-[1.08] tracking-tight text-slate-950 md:text-6xl">
-              何を始めますか？
-            </h1>
+            <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-950 md:text-6xl">何を始めますか？</h1>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
-              営業リスト作成か、競合チャンネル分析かを選ぶだけで始められます。TubeLead は YouTube に慣れた人が、そのまま判断しやすい並びで情報を整理します。
+              営業リスト作成か、競合チャンネル分析かを選ぶだけで始められます。YouTubeに慣れた人が、そのまま比較しやすい順で情報を整理します。
             </p>
           </div>
 
-          <div className="mt-10 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="grid gap-5 lg:grid-cols-2">
-              <ModeCard
-                title="営業モードで検索"
-                subtitle="営業リスト作成"
-                description="YouTubeチャンネルを検索し、メールアドレスや外部リンクを抽出。営業リストを効率的に作成できます。"
-                points={[
-                  "基本情報をすぐ保存して一覧化",
-                  "タグ・メモ・ステータスで整理",
-                  "AI文面下書きまで一気に進められる",
-                ]}
-                href="/search?mode=sales"
-                cta="営業モードで検索を始める"
-                icon={Search}
-                theme="sales"
-              />
-              <ModeCard
-                title="ライバル調査を始める"
-                subtitle="競合チャンネル分析"
-                description="競合チャンネルの平均再生数、投稿頻度、Shorts比率、想定月収を一覧で比較できます。"
-                points={[
-                  "low / base / high の3段階で想定月収を表示",
-                  "競合度・成長性・参入魅力度を比較",
-                  "市場の余白と伸び方を短時間で把握",
-                ]}
-                href="/search?mode=rival"
-                cta="ライバル調査を始める"
-                icon={TrendingUp}
-                theme="rival"
-              />
-            </div>
-
-            <Card className="rounded-[30px] border-slate-200 bg-white">
-              <CardHeader className="p-6 pb-4">
-                <div className="flex items-center gap-2 text-slate-950">
-                  <Clock3 className="h-4 w-4 text-slate-500" />
-                  <CardTitle className="text-2xl">すぐ確認できること</CardTitle>
-                </div>
-                <CardDescription>最近の検索履歴から、そのまま再検索できます。</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 p-6 pt-0">
-                {recentHistory.length > 0 ? (
-                  recentHistory.map((history) => (
-                    <Link
-                      key={history.id}
-                      href={buildHistoryHref(history)}
-                      className="group block rounded-[22px] border border-slate-200 bg-slate-50/80 px-4 py-4 transition hover:border-slate-300 hover:bg-white"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="truncate text-lg font-semibold text-slate-950">{history.keyword}</p>
-                          <p className="mt-1 text-sm text-slate-500">
-                            {formatNumber(history.resultCount)} 件 / {formatDate(history.executedAt)}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm font-medium text-slate-500 transition group-hover:text-slate-950">
-                          再検索
-                          <ArrowRight className="h-4 w-4" />
-                        </div>
-                      </div>
-                    </Link>
-                  ))
-                ) : (
-                  <div className="rounded-[22px] border border-dashed border-slate-200 bg-slate-50/70 px-4 py-5 text-sm leading-7 text-slate-500">
-                    まだ検索履歴はありません。営業モードまたはライバル調査モードから最初の検索を始めてください。
-                  </div>
-                )}
-
-                <div className="rounded-[22px] border border-slate-200 bg-slate-50/80 p-4">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-950">
-                    <Sparkles className="h-4 w-4 text-slate-500" />
-                    今の使いどころ
-                  </div>
-                  <p className="mt-2 text-sm leading-7 text-slate-600">
-                    最近の検索からすぐ再開し、そのまま一覧管理や比較へ進めます。履歴は補助導線としてまとめ、主役は検索開始カードに寄せています。
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="mx-auto mt-10 grid max-w-5xl gap-5 lg:grid-cols-2">
+            <ModeCard
+              label="営業リスト作成"
+              title="営業モードで検索"
+              description="YouTubeチャンネルを検索し、メールアドレスや外部リンクを抽出。営業リストを効率的に作成できます。"
+              points={[
+                "基本情報をすぐ保存して一覧化",
+                "タグ・メモ・ステータスで整理",
+                "AI文面下書きまで一気に進められる",
+              ]}
+              href="/search?mode=sales"
+              cta="営業モードで検索を始める"
+              icon={Search}
+              tone="sales"
+            />
+            <ModeCard
+              label="競合チャンネル分析"
+              title="ライバル調査を始める"
+              description="競合チャンネルの平均再生数、投稿頻度、Shorts比率、想定月収を一覧で比較できます。"
+              points={[
+                "low / base / high の3段階で想定月収を表示",
+                "競合度・成長性・参入魅力度を比較",
+                "市場の余白と伸び方を短時間で把握",
+              ]}
+              href="/search?mode=rival"
+              cta="ライバル調査を始める"
+              icon={TrendingUp}
+              tone="rival"
+            />
           </div>
         </section>
 
         <section className="space-y-4">
-          <div className="flex flex-col gap-1">
+          <div>
             <p className="text-sm font-medium text-slate-500">Dashboard</p>
-            <h2 className="text-3xl font-semibold tracking-tight text-slate-950">現在の状況</h2>
+            <h2 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950">現在の状況</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="総件数"
               value={stats.totalChannels}
-              description="保存済みの YouTube チャンネル数"
+              description="保存済みのYouTubeチャンネル数"
               icon={Users}
-              tone="dark"
+              tone="slate"
             />
             <MetricCard
               label="メールあり件数"
@@ -307,34 +277,75 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <Card className="rounded-[30px] border-slate-200 bg-white">
-            <CardHeader className="p-7">
-              <CardTitle className="text-3xl tracking-tight text-slate-950">営業モードでできること</CardTitle>
-              <CardDescription className="text-sm leading-7">
-                最初に理解する → 次に整理する → 最後に行動する、の流れに沿って短く読める構成にしています。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 p-7 pt-0 text-sm leading-7 text-slate-600">
-              <p>検索後は基本情報をすぐ保存し、一覧に表示します。</p>
-              <p>その後に動画概要欄の補完が順次進み、必要な行だけ外部サイトの詳細走査を実行できます。</p>
-              <p>タグ、メモ、ステータス管理と AI 営業文面の下書き生成まで一続きで行えます。</p>
-            </CardContent>
-          </Card>
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Clock3 className="h-5 w-5 text-slate-500" />
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">最近の検索</h2>
+            </div>
+            <Link href="/search" className="text-sm font-medium text-blue-600 hover:text-blue-700">
+              すべて表示
+            </Link>
+          </div>
 
-          <Card className="rounded-[30px] border-slate-200 bg-white">
-            <CardHeader className="p-7">
-              <CardTitle className="text-3xl tracking-tight text-slate-950">ライバル調査モードでできること</CardTitle>
-              <CardDescription className="text-sm leading-7">
-                比較しやすい指標だけを前に出し、参入判断に必要な情報を最短で読めるようにしています。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 p-7 pt-0 text-sm leading-7 text-slate-600">
-              <p>直近動画の平均再生、投稿頻度、Shorts率、再生効率を一覧で比較できます。</p>
-              <p>想定月収は low / base / high の3段階で表示し、一覧でも詳細でも比較できます。</p>
-              <p>競合度、成長性、参入魅力度を見ながら、参入余地のあるジャンルを探せます。</p>
+          <Card className="rounded-[28px] border-slate-200 bg-white shadow-[0_18px_45px_-40px_rgba(15,23,42,0.45)]">
+            <CardContent className="p-4 md:p-6">
+              {recentHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {recentHistory.map((history) => (
+                    <Link
+                      key={history.id}
+                      href={buildHistoryHref(history)}
+                      className="group flex items-center justify-between gap-4 rounded-2xl border border-transparent px-4 py-3 transition hover:border-slate-200 hover:bg-slate-50"
+                    >
+                      <div className="flex min-w-0 items-center gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+                          <Search className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-semibold text-slate-950">{history.keyword}</p>
+                          <p className="mt-1 text-sm text-slate-500">{formatDate(history.executedAt)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-slate-500">
+                        <span className="font-medium">{formatNumber(history.resultCount)}件</span>
+                        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-sm leading-7 text-slate-500">
+                  まだ検索履歴はありません。営業モードまたはライバル調査モードから最初の検索を始めてください。
+                </div>
+              )}
             </CardContent>
           </Card>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-2">
+          <CapabilityCard
+            title="営業モードでできること"
+            description="検索して、整理して、提案まで進める"
+            tone="sales"
+            items={[
+              { label: "Search", value: "検索後は基本情報をすぐ保存し、一覧画面でそのまま絞り込みに入れます。" },
+              { label: "Organize", value: "タグ、メモ、ステータスで見込み度を整理し、営業対象を絞れます。" },
+              { label: "Contact", value: "必要な行だけ詳細走査して、連絡先確認とAI文面下書きへつなげられます。" },
+              { label: "Fit", value: "実務ツールとしての一覧性を優先し、候補比較がしやすい構成です。" },
+            ]}
+          />
+          <CapabilityCard
+            title="ライバル調査モードでできること"
+            description="比較して、見極めて、参入余地を探す"
+            tone="rival"
+            items={[
+              { label: "Views", value: "直近動画の平均再生、中央値、再生効率を一覧で比較できます。" },
+              { label: "Cadence", value: "投稿頻度、Shorts率、最近の更新状況を見て運用の強さを判断できます。" },
+              { label: "Revenue", value: "想定月収を low / base / high で見比べながら市場感を把握できます。" },
+              { label: "Opportunity", value: "競合度、成長性、参入魅力度をまとめて見て、狙う余地を探せます。" },
+            ]}
+          />
         </section>
       </div>
     </AppShell>

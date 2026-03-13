@@ -12,6 +12,7 @@ import type {
 import { getCurrentPlan, getPlanLimits } from "@/lib/plan";
 import { prisma } from "@/lib/prisma";
 import { estimateMonthlyIncomeRange } from "@/lib/rival-analysis";
+import { calcContactabilityScore } from "@/lib/scoring";
 import type { ChannelFiltersInput, ChannelUpdateInput, SearchFormInput } from "@/lib/schemas";
 import {
   safeJsonParseArray,
@@ -19,7 +20,7 @@ import {
   safeJsonStringify,
   uniqueStrings,
 } from "@/lib/utils";
-import type { BasicYoutubeChannel, NormalizedYoutubeChannel, SearchChannelsResult } from "@/lib/youtube";
+import { guessCategory, type BasicYoutubeChannel, type NormalizedYoutubeChannel, type SearchChannelsResult } from "@/lib/youtube";
 
 const CHANNEL_PAGE_SIZE = 25;
 
@@ -263,6 +264,28 @@ export function serializeChannel(
     _count?: { drafts: number };
   },
 ): SerializedChannel {
+  const sourceQueries = safeJsonParseArray(channel.sourceQueries);
+  const contactEmails = uniqueStrings([
+    ...safeJsonParseArray(channel.contactEmails),
+    ...(channel.contactEmail ? [channel.contactEmail] : []),
+  ]);
+  const contactFormUrls = safeJsonParseArray(channel.contactFormUrls);
+  const socialLinks = safeJsonParseObjectArray(channel.socialLinks) as SerializedChannel["socialLinks"];
+  const officialWebsiteUrls = safeJsonParseArray(channel.officialWebsiteUrls);
+  const externalLinks = safeJsonParseArray(channel.externalLinks);
+  const contactEvidence = safeJsonParseObjectArray(channel.contactEvidence) as SerializedChannel["contactEvidence"];
+  const normalizedCategoryGuess = guessCategory(`${channel.title} ${channel.description}`, [
+    channel.sourceQuery,
+    ...sourceQueries,
+  ]);
+  const normalizedContactabilityScore = calcContactabilityScore({
+    emails: contactEmails,
+    contactFormUrls,
+    officialWebsiteUrls,
+    socialLinks,
+    descriptionLength: channel.description.length,
+    externalEvidenceCount: contactEvidence.filter((item) => item.sourceType === "external_site").length,
+  });
   const estimatedIncome =
     channel.monthlyViewsEstimate !== null
       ? estimateMonthlyIncomeRange(channel.monthlyViewsEstimate, channel.shortsRatio)
@@ -288,27 +311,27 @@ export function serializeChannel(
     thumbnailUrl: channel.thumbnailUrl,
     channelUrl: channel.channelUrl,
     sourceQuery: channel.sourceQuery,
-    sourceQueries: safeJsonParseArray(channel.sourceQueries),
+    sourceQueries,
     matchedQueryCount: channel.matchedQueryCount,
     contactEmail: channel.contactEmail,
-    contactEmails: safeJsonParseArray(channel.contactEmails),
-    contactFormUrls: safeJsonParseArray(channel.contactFormUrls),
-    socialLinks: safeJsonParseObjectArray(channel.socialLinks),
-    officialWebsiteUrls: safeJsonParseArray(channel.officialWebsiteUrls),
-    externalLinks: safeJsonParseArray(channel.externalLinks),
+    contactEmails,
+    contactFormUrls,
+    socialLinks,
+    officialWebsiteUrls,
+    externalLinks,
     bestContactMethod: (channel.bestContactMethod || "none") as SerializedChannel["bestContactMethod"],
     bestContactValue: channel.bestContactValue,
     contactType: channel.contactType as SerializedChannel["contactType"],
-    contactEvidence: safeJsonParseObjectArray(channel.contactEvidence),
+    contactEvidence,
     regionGuess: channel.regionGuess,
-    categoryGuess: channel.categoryGuess,
+    categoryGuess: normalizedCategoryGuess,
     basicFetchedAt: channel.basicFetchedAt?.toISOString() || null,
     lightEnrichmentStatus: channel.lightEnrichmentStatus,
     lightEnrichmentUpdatedAt: channel.lightEnrichmentUpdatedAt?.toISOString() || null,
     deepEnrichmentStatus: channel.deepEnrichmentStatus,
     deepEnrichmentUpdatedAt: channel.deepEnrichmentUpdatedAt?.toISOString() || null,
     relevanceScore: channel.relevanceScore,
-    contactabilityScore: channel.contactabilityScore,
+    contactabilityScore: normalizedContactabilityScore,
     freshnessScore: channel.freshnessScore,
     outreachScore: channel.outreachScore,
     latestVideoScanCount: channel.latestVideoScanCount,

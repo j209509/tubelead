@@ -151,7 +151,7 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
     }, 1200);
   });
 
-  const visibleHistory = showAllHistory ? recentHistory : recentHistory.slice(0, 3);
+  const visibleHistory = showAllHistory ? recentHistory : recentHistory.slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -393,7 +393,7 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
               </div>
             )}
 
-            {recentHistory.length > 3 ? (
+            {recentHistory.length > 5 ? (
               <button
                 type="button"
                 onClick={() => setShowAllHistory((current) => !current)}

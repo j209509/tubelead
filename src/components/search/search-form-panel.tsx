@@ -215,7 +215,7 @@ export function SearchFormPanel({ defaultValues, recentHistory, youtubeConfigure
   });
 
   if (currentMode === "sales") {
-    const visibleHistory = showAllHistory ? recentHistory : recentHistory.slice(0, 3);
+    const visibleHistory = showAllHistory ? recentHistory : recentHistory.slice(0, 5);
 
     return (
       <div className="space-y-6">
@@ -409,7 +409,7 @@ export function SearchFormPanel({ defaultValues, recentHistory, youtubeConfigure
                 </div>
               )}
 
-              {recentHistory.length > 3 ? (
+              {recentHistory.length > 5 ? (
                 <button
                   type="button"
                   onClick={() => setShowAllHistory((current) => !current)}

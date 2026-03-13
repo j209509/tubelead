@@ -39,11 +39,11 @@ export function calcContactabilityScore(params: {
   descriptionLength: number;
   externalEvidenceCount: number;
 }) {
-  let score = 0;
-
   if (params.emails.length > 0) {
-    score += 55;
+    return 100;
   }
+
+  let score = 0;
 
   if (params.contactFormUrls.length > 0) {
     score += 28;

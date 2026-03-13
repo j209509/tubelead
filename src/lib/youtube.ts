@@ -161,7 +161,7 @@ const REGION_KEYWORDS: Array<{ label: string; keywords: string[] }> = [
   { label: "沖縄県", keywords: ["沖縄"] },
 ];
 
-const CATEGORY_KEYWORDS: Array<{ label: string; keywords: string[] }> = [
+export const CATEGORY_KEYWORDS: Array<{ label: string; keywords: string[] }> = [
   { label: "ペット", keywords: ["ペット", "pet"] },
   { label: "犬", keywords: ["犬", "dog", "corgi", "コーギー", "柴犬"] },
   { label: "猫", keywords: ["猫", "cat"] },
@@ -173,6 +173,92 @@ const CATEGORY_KEYWORDS: Array<{ label: string; keywords: string[] }> = [
   { label: "教育", keywords: ["教育", "学習", "study", "解説"] },
   { label: "エンタメ", keywords: ["vlog", "エンタメ", "日常", "channel"] },
 ];
+
+const CATEGORY_RULES_V2: Array<{ label: string; keywords: string[] }> = [
+  {
+    label: "リフォーム/DIY",
+    keywords: [
+      "リフォーム",
+      "リノベ",
+      "リノベーション",
+      "diy",
+      "renovation",
+      "remodel",
+      "home improvement",
+      "woodworking",
+      "carpentry",
+      "工務店",
+      "内装",
+      "住宅リフォーム",
+    ],
+  },
+  {
+    label: "不動産",
+    keywords: ["不動産", "物件", "賃貸", "戸建て", "マンション", "real estate", "property", "realty", "realtor"],
+  },
+  {
+    label: "美容",
+    keywords: ["美容", "美容室", "美容院", "ヘア", "ヘアサロン", "hair salon", "salon", "stylist", "メイク", "ネイル", "エステ"],
+  },
+  { label: "歯科", keywords: ["歯医者", "歯科", "歯科医院", "dental clinic", "dentist", "dental"] },
+  { label: "飲食", keywords: ["飲食", "カフェ", "レストラン", "restaurant", "food", "グルメ", "居酒屋"] },
+  { label: "教育", keywords: ["教育", "学習", "study", "解説", "講座", "授業", "受験"] },
+  { label: "投資", keywords: ["投資", "trading", "funded", "prop", "資産運用", "株式", "仮想通貨"] },
+  { label: "FX", keywords: ["fx", "為替", "自動売買", "prop firm", "mt4", "mt5"] },
+  { label: "ペット", keywords: ["ペット", "pet channel", "pet vlog", "animal channel"] },
+  { label: "犬", keywords: ["犬", "dog", "corgi", "コーギー", "柴犬", "トイプードル", "わんこ"] },
+  { label: "猫", keywords: ["猫", "cat", "kitten", "子猫", "保護猫", "ねこ"] },
+  { label: "エンタメ", keywords: ["vlog", "エンタメ", "日常", "バラエティ", "entertainment"] },
+];
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeCategoryText(text: string) {
+  return ` ${text
+    .toLowerCase()
+    .replace(/[\n\r\t]+/g, " ")
+    .replace(/[|/_,.()［］【】「」『』!?！？:：;；\-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()} `;
+}
+
+function countKeywordMatches(normalizedText: string, keyword: string) {
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  if (!normalizedKeyword) {
+    return 0;
+  }
+
+  const asciiOnly = /^[a-z0-9 ]+$/i.test(normalizedKeyword);
+  if (asciiOnly) {
+    const parts = normalizedKeyword.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+      return 0;
+    }
+
+    const pattern = parts.map((part) => escapeRegExp(part)).join("\\s+");
+    return normalizedText.match(new RegExp(`\\b${pattern}\\b`, "gi"))?.length ?? 0;
+  }
+
+  let count = 0;
+  let cursor = normalizedText.indexOf(normalizedKeyword);
+
+  while (cursor !== -1) {
+    count += 1;
+    cursor = normalizedText.indexOf(normalizedKeyword, cursor + normalizedKeyword.length);
+  }
+
+  return count;
+}
+
+function getKeywordWeight(keyword: string) {
+  if (/^[a-z0-9 ]+$/i.test(keyword)) {
+    return keyword.length >= 8 || keyword.includes(" ") ? 4 : 3;
+  }
+
+  return keyword.length >= 4 ? 5 : 4;
+}
 
 type SearchListResponse = {
   items?: Array<{
@@ -291,12 +377,29 @@ export function guessRegion(text: string) {
   return matched?.label;
 }
 
-export function guessCategory(text: string) {
-  const normalized = text.toLowerCase();
-  const matched = CATEGORY_KEYWORDS.find((category) =>
-    category.keywords.some((keyword) => normalized.includes(keyword.toLowerCase())),
-  );
-  return matched?.label || "エンタメ";
+export function guessCategory(text: string, hints: string[] = []) {
+  const normalized = normalizeCategoryText([text, ...hints].filter(Boolean).join(" "));
+
+  let bestLabel = "エンタメ";
+  let bestScore = 0;
+
+  for (const category of CATEGORY_RULES_V2) {
+    const score = category.keywords.reduce((sum, keyword) => {
+      const count = countKeywordMatches(normalized, keyword);
+      if (count === 0) {
+        return sum;
+      }
+
+      return sum + count * getKeywordWeight(keyword);
+    }, 0);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestLabel = category.label;
+    }
+  }
+
+  return bestScore > 0 ? bestLabel : "エンタメ";
 }
 
 export function calcOutreachScore(
@@ -447,7 +550,7 @@ function buildBasicChannel(base: BaseYoutubeChannel, params: SearchFormInput, so
     sourceQueries,
     matchedQueryCount: sourceQueries.length,
     regionGuess: guessRegion(combinedText),
-    categoryGuess: guessCategory(combinedText),
+    categoryGuess: guessCategory(combinedText, [params.keyword, ...sourceQueries]),
     relevanceScore,
     contactabilityScore,
     freshnessScore,
@@ -513,9 +616,10 @@ function finalizeChannel(
   });
   const freshnessScore = calcFreshnessScore(lastVideoPublishedAt || base.publishedAt);
   const lightCompletedAt = params.lightEnrichmentUpdatedAt ?? new Date().toISOString();
+  const categoryGuess = guessCategory(combinedText, [params.sourceQuery, ...params.sourceQueries]);
   const analysis = buildRivalAnalysis({
     title: base.title,
-    categoryGuess: guessCategory(combinedText),
+    categoryGuess,
     subscriberCount: base.subscriberCount,
     lastVideoPublishedAt,
     videos: params.videos,
@@ -542,7 +646,7 @@ function finalizeChannel(
     contactType: merged.contactType,
     contactEvidence: merged.evidence,
     regionGuess: guessRegion(combinedText),
-    categoryGuess: guessCategory(combinedText),
+    categoryGuess,
     basicFetchedAt: params.basicFetchedAt ?? new Date().toISOString(),
     lightEnrichmentStatus: params.lightEnrichmentStatus ?? "COMPLETED",
     lightEnrichmentUpdatedAt: lightCompletedAt,
@@ -1025,7 +1129,7 @@ export function buildEmptyAnalysis(base: BaseYoutubeChannel, sourceQuery: string
     contactType: "none" as ContactTypeValue,
     contactEvidence: [],
     regionGuess: guessRegion(`${base.title} ${base.description}`),
-    categoryGuess: guessCategory(`${base.title} ${base.description}`),
+    categoryGuess: guessCategory(`${base.title} ${base.description}`, [sourceQuery, ...sourceQueries]),
     relevanceScore: 0,
     contactabilityScore: 0,
     freshnessScore: calcFreshnessScore(base.publishedAt),

@@ -20,7 +20,9 @@ export const dynamic = "force-dynamic";
 type IconType = React.ComponentType<{ className?: string }>;
 
 function buildHistoryHref(history: SerializedSearchHistory) {
-  return `/search?keyword=${encodeURIComponent(history.conditions.keyword)}&mode=${history.conditions.mode}&minSubscribers=${
+  const basePath = history.conditions.mode === "rival" ? "/rival-search" : "/search";
+
+  return `${basePath}?keyword=${encodeURIComponent(history.conditions.keyword)}&mode=${history.conditions.mode}&minSubscribers=${
     history.conditions.minSubscribers
   }&minVideos=${history.conditions.minVideos}&maxResults=${history.conditions.maxResults}&order=${
     history.conditions.order
@@ -240,7 +242,7 @@ export default async function Home() {
                 "競合度・成長性・参入魅力度を比較",
                 "市場の余白と伸び方を短時間で把握",
               ]}
-              href="/search?mode=rival"
+              href="/rival-search"
               cta="ライバル調査を始める"
               icon={TrendingUp}
               tone="rival"

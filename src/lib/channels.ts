@@ -313,6 +313,7 @@ export function serializeChannel(
 
 function buildChannelWhere(filters: ChannelFiltersInput): Prisma.ChannelWhereInput {
   const and: Prisma.ChannelWhereInput[] = [];
+  const contactSignalsOr: Prisma.ChannelWhereInput[] = [];
 
   if (filters.q) {
     and.push({
@@ -373,39 +374,54 @@ function buildChannelWhere(filters: ChannelFiltersInput): Prisma.ChannelWhereInp
     and.push({ lastVideoPublishedAt: { gte: date } });
   }
 
-  if (filters.hasEmail) {
-    and.push({ hasContactEmail: true });
-  }
-
-  if (filters.hasForm) {
-    and.push({ hasContactForm: true });
-  }
-
-  if (filters.hasSocial) {
-    and.push({ hasSocialLinks: true });
-  }
-
-  if (filters.hasOfficialSite) {
-    and.push({ hasOfficialWebsite: true });
-  }
-
   if (filters.onlyUnreviewed) {
     and.push({ status: "UNREVIEWED" });
   }
 
+  if (filters.hasEmail) {
+    contactSignalsOr.push({ hasContactEmail: true });
+  }
+
+  if (filters.hasForm) {
+    contactSignalsOr.push({ hasContactForm: true });
+  }
+
+  if (filters.hasSocial) {
+    contactSignalsOr.push({ hasSocialLinks: true });
+  }
+
+  if (filters.hasOfficialSite) {
+    contactSignalsOr.push({ hasOfficialWebsite: true });
+  }
+
   if (filters.hasVideoContact) {
-    and.push({ videoDescriptionContactCount: { gt: 0 } });
+    contactSignalsOr.push({ videoDescriptionContactCount: { gt: 0 } });
   }
 
   if (filters.hasExternalContact) {
-    and.push({ externalSiteContactCount: { gt: 0 } });
+    contactSignalsOr.push({ externalSiteContactCount: { gt: 0 } });
+  }
+
+  if (contactSignalsOr.length > 0) {
+    and.push({ OR: contactSignalsOr });
   }
 
   return and.length > 0 ? { AND: and } : {};
 }
 
-function buildOrderBy(sort: ChannelSortValue): Prisma.ChannelOrderByWithRelationInput {
+function buildOrderBy(
+  sort: ChannelSortValue,
+): Prisma.ChannelOrderByWithRelationInput | Prisma.ChannelOrderByWithRelationInput[] {
   switch (sort) {
+    case "contactPriority":
+      return [
+        { hasContactEmail: "desc" },
+        { hasContactForm: "desc" },
+        { hasSocialLinks: "desc" },
+        { hasOfficialWebsite: "desc" },
+        { contactabilityScore: "desc" },
+        { updatedAt: "desc" },
+      ];
     case "subscribers":
       return { subscriberCount: "desc" };
     case "views":
@@ -444,6 +460,33 @@ function buildOrderBy(sort: ChannelSortValue): Prisma.ChannelOrderByWithRelation
 
 function sortSerializedChannels(items: SerializedChannel[], sort: ChannelSortValue) {
   const sorted = [...items];
+
+  if (sort === "contactPriority") {
+    const getPriority = (channel: SerializedChannel) => {
+      if (channel.contactEmails.length > 0 || channel.contactEmail) return 4;
+      if (channel.contactFormUrls.length > 0) return 3;
+      if (channel.socialLinks.length > 0) return 2;
+      if (channel.officialWebsiteUrls.length > 0) return 1;
+      return 0;
+    };
+
+    sorted.sort((left, right) => {
+      const leftPriority = getPriority(left);
+      const rightPriority = getPriority(right);
+
+      if (leftPriority !== rightPriority) {
+        return rightPriority - leftPriority;
+      }
+
+      if (left.contactabilityScore !== right.contactabilityScore) {
+        return right.contactabilityScore - left.contactabilityScore;
+      }
+
+      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+    });
+
+    return sorted;
+  }
 
   const getValue = (channel: SerializedChannel) => {
     switch (sort) {

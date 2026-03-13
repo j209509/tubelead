@@ -7,7 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { CHANNEL_SORT_LABELS, MODE_LABELS, type AppModeValue } from "@/lib/constants";
+import { CHANNEL_SORT_LABELS, MODE_LABELS, type AppModeValue, type ChannelSortValue } from "@/lib/constants";
 import { getChannelList } from "@/lib/channels";
 import { channelFiltersSchema, type ChannelFiltersInput } from "@/lib/schemas";
 import { formatCompactNumber, formatCurrencyYen, formatNumber } from "@/lib/utils";
@@ -74,7 +74,7 @@ function countSalesActiveFilters(filters: ChannelFiltersInput) {
     filters.hasVideoContact,
     filters.hasExternalContact,
     filters.onlyUnreviewed,
-    filters.sort !== "updated",
+    filters.sort !== "contactPriority",
   ].filter(Boolean).length;
 }
 
@@ -128,6 +128,32 @@ const salesSummaryCards = [
   { key: "bestEmailCount", label: "bestContact=email" },
   { key: "bestFormCount", label: "bestContact=form" },
 ] as const;
+
+const SALES_SORT_OPTIONS: ChannelSortValue[] = [
+  "contactPriority",
+  "updated",
+  "subscribers",
+  "views",
+  "videos",
+  "contactability",
+  "score",
+];
+
+const RIVAL_SORT_OPTIONS: ChannelSortValue[] = [
+  "incomeHigh",
+  "incomeBase",
+  "monthlyViews",
+  "avgViews",
+  "subscribers",
+  "views",
+  "videos",
+  "posts30",
+  "latestVideo",
+  "competition",
+  "growth",
+  "opportunity",
+  "updated",
+];
 
 function ModeTabs({ currentMode }: { currentMode: AppModeValue }) {
   return (
@@ -282,9 +308,9 @@ function SalesFilters({ filters }: { filters: ChannelFiltersInput }) {
               defaultValue={filters.sort}
               className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
             >
-              {Object.entries(CHANNEL_SORT_LABELS).map(([value, label]) => (
+              {SALES_SORT_OPTIONS.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {CHANNEL_SORT_LABELS[value]}
                 </option>
               ))}
             </select>
@@ -449,9 +475,9 @@ function RivalFilters({ filters }: { filters: ChannelFiltersInput }) {
               defaultValue={filters.sort}
               className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-4 focus:ring-violet-100"
             >
-              {Object.entries(CHANNEL_SORT_LABELS).map(([value, label]) => (
+              {RIVAL_SORT_OPTIONS.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {CHANNEL_SORT_LABELS[value]}
                 </option>
               ))}
             </select>
@@ -499,9 +525,11 @@ export default async function ChannelsPage({
   const parsed = channelFiltersSchema.safeParse(params);
   const baseFilters = parsed.success ? parsed.data : DEFAULT_FILTERS;
   const filters =
-    baseFilters.mode === "rival" && typeof params.sort !== "string"
-      ? { ...baseFilters, sort: "incomeHigh" as const }
-      : baseFilters;
+    typeof params.sort === "string"
+      ? baseFilters
+      : baseFilters.mode === "rival"
+        ? { ...baseFilters, sort: "incomeHigh" as const }
+        : { ...baseFilters, sort: "contactPriority" as const };
   const data = await getChannelList(filters, { includeAutoScanIds: filters.mode === "rival" });
   const rivalSummary = filters.mode === "rival" ? buildRivalSummary(data.items, data.total) : null;
 

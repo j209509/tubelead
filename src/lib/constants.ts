@@ -14,6 +14,7 @@ export const DRAFT_LENGTH_VALUES = ["SHORT", "NORMAL", "LONG"] as const;
 export const CONTACT_TYPE_VALUES = ["email", "form", "social", "link_only", "none"] as const;
 export const SEARCH_ORDER_VALUES = ["relevance", "date"] as const;
 export const CHANNEL_SORT_VALUES = [
+  "contactPriority",
   "updated",
   "subscribers",
   "views",
@@ -112,6 +113,7 @@ export const LENGTH_LABELS: Record<DraftLengthValue, string> = {
 };
 
 export const CHANNEL_SORT_LABELS: Record<ChannelSortValue, string> = {
+  contactPriority: "連絡優先順",
   updated: "更新順",
   subscribers: "登録者数順",
   views: "総再生数順",

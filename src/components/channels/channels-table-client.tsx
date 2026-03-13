@@ -172,6 +172,45 @@ function getCategoryPillClass(category: string | null | undefined) {
   return CATEGORY_PILL_STYLES[key % CATEGORY_PILL_STYLES.length];
 }
 
+function isHttpUrl(value: string) {
+  return /^https?:\/\//i.test(value);
+}
+
+function isEmail(value: string) {
+  return value.includes("@") && !value.includes(" ");
+}
+
+function renderContactValue(channel: SerializedChannel) {
+  const value = channel.bestContactValue;
+
+  if (!value) {
+    return <span className="text-slate-400">-</span>;
+  }
+
+  if (isHttpUrl(value)) {
+    return (
+      <a
+        href={value}
+        target="_blank"
+        rel="noreferrer"
+        className="line-clamp-3 break-all text-blue-600 underline-offset-2 hover:underline"
+      >
+        {value}
+      </a>
+    );
+  }
+
+  if (isEmail(value)) {
+    return (
+      <a href={`mailto:${value}`} className="break-all text-blue-600 underline-offset-2 hover:underline">
+        {value}
+      </a>
+    );
+  }
+
+  return <span className="break-all text-slate-700">{value}</span>;
+}
+
 export function ChannelsTableClient({
   initialItems,
   lockedCount,
@@ -538,7 +577,7 @@ export function ChannelsTableClient({
         </div>
 
         <div className="overflow-x-auto">
-          <table className={cn("w-full divide-y divide-slate-200 text-sm", isSales ? "min-w-[1500px]" : "min-w-[1180px]")}>
+          <table className={cn("w-full divide-y divide-slate-200 text-sm", isSales ? "min-w-[1380px]" : "min-w-[1180px]")}>
             <thead className="bg-slate-50/90 text-left text-slate-500">
               <tr>
                 {isSales ? (
@@ -552,15 +591,39 @@ export function ChannelsTableClient({
                       />
                     </th>
                     <th className="px-4 py-3 font-medium">チャンネル名</th>
-                    <th className="px-4 py-3 font-medium">登録者数</th>
-                    <th className="px-4 py-3 font-medium">動画数</th>
+                    <th className="px-4 py-3 font-medium">
+                      <GlobalSortHeader
+                        label="登録者数"
+                        active={currentSort === "subscribers"}
+                        onClick={() => pushGlobalSort("subscribers")}
+                      />
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      <GlobalSortHeader
+                        label="動画数"
+                        active={currentSort === "videos"}
+                        onClick={() => pushGlobalSort("videos")}
+                      />
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      <GlobalSortHeader
+                        label="総再生数"
+                        active={currentSort === "views"}
+                        onClick={() => pushGlobalSort("views")}
+                      />
+                    </th>
                     <th className="px-4 py-3 font-medium">カテゴリ</th>
                     <th className="px-4 py-3 font-medium">地域</th>
                     <th className="px-4 py-3 font-medium">連絡先種別</th>
                     <th className="px-4 py-3 font-medium">bestContact</th>
                     <th className="px-4 py-3 font-medium">連絡先</th>
-                    <th className="px-4 py-3 font-medium">sourceQueries</th>
-                    <th className="px-4 py-3 font-medium">連絡可能性</th>
+                    <th className="px-4 py-3 font-medium">
+                      <GlobalSortHeader
+                        label="連絡可能性"
+                        active={currentSort === "contactability"}
+                        onClick={() => pushGlobalSort("contactability")}
+                      />
+                    </th>
                     <th className="px-4 py-3 font-medium">操作</th>
                   </>
                 ) : (
@@ -604,7 +667,6 @@ export function ChannelsTableClient({
             <tbody className="divide-y divide-slate-200 bg-white">
               {rows.map((channel) => {
                 const isLightLoading = lightLoadingIds.includes(channel.id);
-                const isDeepLoading = deepLoadingIds.includes(channel.id);
                 const categoryLabel = channel.categoryGuess || "未分類";
 
                 if (!isSales) {
@@ -702,7 +764,7 @@ export function ChannelsTableClient({
                           alt={channel.title}
                           className="h-11 w-11 rounded-full object-cover"
                         />
-                        <div className="min-w-0 space-y-1">
+                        <div className="min-w-0 max-w-[170px] space-y-1">
                           <p className="truncate font-medium text-slate-900">{channel.title}</p>
                           <p className="text-xs text-slate-500">{truncate(channel.sourceQuery, 40)}</p>
                         </div>
@@ -710,6 +772,7 @@ export function ChannelsTableClient({
                     </td>
                     <td className="px-4 py-4 text-slate-700">{formatNumber(channel.subscriberCount)}</td>
                     <td className="px-4 py-4 text-slate-700">{formatNumber(channel.videoCount)}</td>
+                    <td className="px-4 py-4 text-slate-700">{formatCompactNumber(channel.viewCount)}</td>
                     <td className="px-4 py-4">
                       <span
                         className={cn(
@@ -728,9 +791,8 @@ export function ChannelsTableClient({
                       <BestContactBadge method={channel.bestContactMethod} />
                     </td>
                     <td className="px-4 py-4">
-                      <p className="max-w-[220px] break-all text-slate-700">{channel.bestContactValue || "-"}</p>
+                      <div className="max-w-[190px]">{renderContactValue(channel)}</div>
                     </td>
-                    <td className="px-4 py-4 text-slate-700">{formatNumber(channel.sourceQueries.length)} 件</td>
                     <td className="px-4 py-4 font-medium text-slate-900">{formatNumber(channel.contactabilityScore)}</td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col items-start gap-2">
@@ -739,31 +801,9 @@ export function ChannelsTableClient({
                           <EnrichmentStatusBadge status={channel.lightEnrichmentStatus} label="動画" />
                           <EnrichmentStatusBadge status={channel.deepEnrichmentStatus} label="外部" />
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => void runLightScan(channel.id)}
-                            disabled={isLightLoading}
-                          >
-                            <RefreshCw className={cn("mr-2 h-4 w-4", isLightLoading && "animate-spin")} />
-                            {isLightLoading ? "動画抽出中..." : "動画抽出"}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => void runDeepScan(channel.id)}
-                            disabled={isDeepLoading}
-                          >
-                            <RefreshCw className={cn("mr-2 h-4 w-4", isDeepLoading && "animate-spin")} />
-                            {isDeepLoading ? "詳細走査中..." : "詳細検索"}
-                          </Button>
-                          <Button asChild size="sm" variant="ghost">
-                            <Link href={`/channels/${channel.id}?mode=${mode}`}>詳細</Link>
-                          </Button>
-                        </div>
+                        <Button asChild size="sm" variant="ghost">
+                          <Link href={`/channels/${channel.id}?mode=${mode}`}>詳細</Link>
+                        </Button>
                       </div>
                     </td>
                   </tr>

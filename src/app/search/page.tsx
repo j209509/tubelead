@@ -27,10 +27,7 @@ export default async function SearchPage({
   const recentHistory = await getRecentSearchHistory(6);
 
   return (
-    <AppShell
-      title="YouTubeチャンネル検索"
-      description="検索直後は基本情報をすぐ一覧化し、その後に動画分析や連絡先補完を順次反映します。営業モードとライバル調査モードをここから切り替えられます。"
-    >
+    <AppShell>
       <SearchFormPanel
         defaultValues={defaults}
         recentHistory={recentHistory}

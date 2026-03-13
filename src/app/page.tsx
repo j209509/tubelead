@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardStats, getRecentSearchHistory, type SerializedSearchHistory } from "@/lib/channels";
 import { formatDate, formatNumber } from "@/lib/utils";
@@ -52,56 +51,65 @@ function ModeCard({
     tone === "sales"
       ? {
           card:
-            "border-blue-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(239,246,255,0.8)_100%)] shadow-[0_30px_80px_-56px_rgba(37,99,235,0.55)]",
-          hover: "hover:border-blue-300 hover:shadow-[0_38px_90px_-56px_rgba(37,99,235,0.62)]",
+            "border-blue-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(239,246,255,0.82)_100%)] shadow-[0_28px_72px_-56px_rgba(37,99,235,0.42)]",
+          hover:
+            "group-hover:-translate-y-2 group-hover:scale-[1.01] group-hover:border-blue-300 group-hover:shadow-[0_42px_100px_-48px_rgba(37,99,235,0.62)] group-focus-visible:-translate-y-2 group-focus-visible:scale-[1.01] group-focus-visible:border-blue-300 group-focus-visible:shadow-[0_42px_100px_-48px_rgba(37,99,235,0.62)]",
           orb: "bg-[radial-gradient(circle_at_top_right,rgba(191,219,254,0.55),transparent_42%)]",
           iconWrap: "bg-blue-600 text-white shadow-[0_20px_34px_-20px_rgba(37,99,235,0.9)]",
           label: "text-blue-700",
           bullet: "bg-blue-600",
-          button: "bg-blue-600 text-white hover:bg-blue-700 hover:text-white !text-white [&_svg]:!text-white",
+          button:
+            "bg-blue-600 text-white shadow-[0_18px_36px_-22px_rgba(37,99,235,0.75)] group-hover:bg-blue-700 group-focus-visible:bg-blue-700",
         }
       : {
           card:
-            "border-fuchsia-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(250,245,255,0.92)_100%)] shadow-[0_30px_80px_-56px_rgba(168,85,247,0.55)]",
-          hover: "hover:border-fuchsia-300 hover:shadow-[0_38px_90px_-56px_rgba(168,85,247,0.62)]",
+            "border-fuchsia-200 bg-[linear-gradient(180deg,rgba(255,255,255,1)_0%,rgba(250,245,255,0.92)_100%)] shadow-[0_28px_72px_-56px_rgba(168,85,247,0.42)]",
+          hover:
+            "group-hover:-translate-y-2 group-hover:scale-[1.01] group-hover:border-fuchsia-300 group-hover:shadow-[0_42px_100px_-48px_rgba(168,85,247,0.62)] group-focus-visible:-translate-y-2 group-focus-visible:scale-[1.01] group-focus-visible:border-fuchsia-300 group-focus-visible:shadow-[0_42px_100px_-48px_rgba(168,85,247,0.62)]",
           orb: "bg-[radial-gradient(circle_at_top_right,rgba(233,213,255,0.55),transparent_42%)]",
           iconWrap: "bg-fuchsia-600 text-white shadow-[0_20px_34px_-20px_rgba(168,85,247,0.9)]",
           label: "text-fuchsia-700",
           bullet: "bg-fuchsia-600",
-          button: "bg-fuchsia-600 text-white hover:bg-fuchsia-700 hover:text-white !text-white [&_svg]:!text-white",
+          button:
+            "bg-fuchsia-600 text-white shadow-[0_18px_36px_-22px_rgba(168,85,247,0.75)] group-hover:bg-fuchsia-700 group-focus-visible:bg-fuchsia-700",
         };
 
   return (
-    <Card className={`group relative overflow-hidden rounded-[28px] transition ${styles.card} ${styles.hover}`}>
-      <div className={`absolute inset-0 ${styles.orb}`} />
-      <CardContent className="relative flex h-full flex-col p-6 md:p-7">
-        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${styles.iconWrap}`}>
-          <Icon className="h-6 w-6" />
-        </div>
+    <Link
+      href={href}
+      className="group block h-full rounded-[28px] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200/60"
+    >
+      <Card className={`relative h-full cursor-pointer overflow-hidden rounded-[28px] transition-all duration-300 ${styles.card} ${styles.hover}`}>
+        <div className={`absolute inset-0 ${styles.orb}`} />
+        <CardContent className="relative flex h-full flex-col p-6 md:p-7">
+          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${styles.iconWrap}`}>
+            <Icon className="h-6 w-6" />
+          </div>
 
-        <div className="mt-6">
-          <p className={`text-sm font-medium ${styles.label}`}>{label}</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{title}</h2>
-          <p className="mt-4 text-sm leading-7 text-slate-600">{description}</p>
-        </div>
+          <div className="mt-6">
+            <p className={`text-sm font-medium ${styles.label}`}>{label}</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">{title}</h2>
+            <p className="mt-4 text-sm leading-7 text-slate-600">{description}</p>
+          </div>
 
-        <ul className="mt-6 space-y-3 text-sm text-slate-600">
-          {points.map((point) => (
-            <li key={point} className="flex items-start gap-3">
-              <span className={`mt-2 h-1.5 w-1.5 rounded-full ${styles.bullet}`} />
-              <span>{point}</span>
-            </li>
-          ))}
-        </ul>
+          <ul className="mt-6 space-y-3 text-sm text-slate-600">
+            {points.map((point) => (
+              <li key={point} className="flex items-start gap-3">
+                <span className={`mt-2 h-1.5 w-1.5 rounded-full ${styles.bullet}`} />
+                <span>{point}</span>
+              </li>
+            ))}
+          </ul>
 
-        <Button asChild size="lg" className={`mt-8 h-12 rounded-2xl text-sm font-medium ${styles.button}`}>
-          <Link href={href}>
-            {cta}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
+          <div
+            className={`mt-8 flex h-12 items-center justify-center rounded-2xl text-sm font-medium text-white ${styles.button}`}
+          >
+            <span>{cta}</span>
+            <ArrowRight className="ml-2 h-4 w-4 text-white" />
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 

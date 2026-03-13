@@ -59,7 +59,6 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
     defaultValues: {
       ...defaultValues,
       mode: "rival",
-      hasContactOnly: false,
     },
   });
 
@@ -88,27 +87,22 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
     };
   }, []);
 
-  const resetForm = () => {
-    form.reset({
-      ...defaultValues,
-      mode: "rival",
-      hasContactOnly: false,
-    });
-    setResult(null);
-    setError("");
-    setIsRedirecting(false);
-  };
-
   const applyHistory = (history: SerializedSearchHistory) => {
     if (history.conditions.mode === "sales") {
       window.location.assign(buildHistoryHref(history));
       return;
     }
 
+    form.reset(history.conditions);
+    setResult(null);
+    setError("");
+    setIsRedirecting(false);
+  };
+
+  const resetForm = () => {
     form.reset({
-      ...history.conditions,
+      ...defaultValues,
       mode: "rival",
-      hasContactOnly: false,
     });
     setResult(null);
     setError("");
@@ -123,7 +117,6 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
     const parsed = searchFormSchema.safeParse({
       ...rawValues,
       mode: "rival",
-      hasContactOnly: false,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message || "検索条件が不正です。");
@@ -168,7 +161,7 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
         <span className="font-medium text-slate-900">ライバル調査を始める</span>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_380px]">
         <Card className="rounded-[28px] border-slate-200 bg-white shadow-[0_18px_45px_-40px_rgba(15,23,42,0.45)]">
           <CardContent className="p-8 md:p-10">
             <div className="flex items-start gap-4">
@@ -182,13 +175,14 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
             </div>
 
             <form className="mt-12 grid gap-10" onSubmit={onSubmit}>
-              <input type="hidden" {...form.register("mode")} value="rival" />
-              <input type="hidden" {...form.register("hasContactOnly")} value="false" />
+              <input type="hidden" {...form.register("mode")} />
 
               <div className="grid gap-4">
-                <Label htmlFor="keyword" className="text-base font-semibold text-slate-950">
-                  検索キーワード
-                </Label>
+                <div className="space-y-1">
+                  <Label htmlFor="keyword" className="text-base font-semibold text-slate-950">
+                    検索キーワード
+                  </Label>
+                </div>
                 <div className="grid gap-2">
                   <Input
                     id="keyword"
@@ -196,42 +190,14 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
                     placeholder="例: コーヒー、釣り、料理など"
                     {...form.register("keyword")}
                   />
-                  <p className="text-sm text-slate-500">競合チャンネルを検索し、市場の余白や強さを分析します</p>
+                  <p className="text-sm text-slate-500">競合チャンネル名、動画タイトル、説明文から検索します</p>
                   <p className="text-sm text-rose-500">{form.formState.errors.keyword?.message}</p>
                 </div>
               </div>
 
               <div className="grid gap-4">
-                <h2 className="text-base font-semibold text-slate-950">何が分かるか</h2>
+                <h2 className="text-base font-semibold text-slate-950">詳細条件</h2>
                 <div className="grid gap-4 md:grid-cols-3">
-                  {[
-                    {
-                      title: "想定月収",
-                      description: "low / base / high の3段階で、競合の規模感を比較できます。",
-                    },
-                    {
-                      title: "直近動画",
-                      description: "平均再生数、中央値、投稿本数を見て、最近の強さを把握できます。",
-                    },
-                    {
-                      title: "参入余地",
-                      description: "競合度、成長性、参入魅力度を一覧上で見比べられます。",
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.title}
-                      className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50/40 p-5"
-                    >
-                      <p className="text-lg font-semibold text-slate-950">{item.title}</p>
-                      <p className="mt-3 text-sm leading-7 text-slate-600">{item.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-4">
-                <h2 className="text-base font-semibold text-slate-950">検索条件</h2>
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <div className="grid gap-3">
                     <Label htmlFor="minSubscribers" className="text-sm font-medium text-slate-700">
                       最低登録者数
@@ -261,21 +227,8 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
                     />
                   </div>
                   <div className="grid gap-3">
-                    <Label htmlFor="order" className="text-sm font-medium text-slate-700">
-                      並び順
-                    </Label>
-                    <select
-                      id="order"
-                      className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-fuchsia-400 focus:ring-4 focus:ring-fuchsia-100"
-                      {...form.register("order")}
-                    >
-                      <option value="relevance">関連度順</option>
-                      <option value="date">新しい順</option>
-                    </select>
-                  </div>
-                  <div className="grid gap-3">
                     <Label htmlFor="maxResults" className="text-sm font-medium text-slate-700">
-                      取得チャンネル数
+                      最大取得件数
                     </Label>
                     <Input
                       id="maxResults"
@@ -284,7 +237,7 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
                       max={5000}
                       className="h-11 rounded-2xl bg-slate-50"
                       {...form.register("maxResults", {
-                        setValueAs: (value) => (value === "" ? 50 : Number(value)),
+                        setValueAs: (value) => (value === "" ? 300 : Number(value)),
                       })}
                     />
                   </div>
@@ -293,11 +246,30 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
 
               <div className="grid gap-5">
                 <h2 className="text-base font-semibold text-slate-950">オプション</h2>
+
                 <div className="space-y-3">
+                  <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                    <input type="checkbox" className="h-4 w-4 rounded border-slate-300" {...form.register("hasContactOnly")} />
+                    連絡先ありのみ
+                  </label>
                   <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                     <input type="checkbox" className="h-4 w-4 rounded border-slate-300" {...form.register("preferJapanese")} />
                     日本語チャンネル優先
                   </label>
+                </div>
+
+                <div className="grid max-w-sm gap-3">
+                  <Label htmlFor="order" className="text-sm font-medium text-slate-700">
+                    並び順
+                  </Label>
+                  <select
+                    id="order"
+                    className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-fuchsia-400 focus:ring-4 focus:ring-fuchsia-100"
+                    {...form.register("order")}
+                  >
+                    <option value="relevance">関連度順</option>
+                    <option value="date">新しい順</option>
+                  </select>
                 </div>
               </div>
 
@@ -310,7 +282,7 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
                     disabled={form.formState.isSubmitting || isRedirecting}
                   >
                     <TrendingUp className="mr-2 h-5 w-5" />
-                    {form.formState.isSubmitting || isRedirecting ? "分析準備中..." : "ライバル調査を実行"}
+                    {form.formState.isSubmitting || isRedirecting ? "ライバル調査中..." : "ライバル調査を実行"}
                   </Button>
                   <Button
                     type="button"
@@ -326,67 +298,61 @@ export function RivalSearchPanel({ defaultValues, recentHistory }: RivalSearchPa
                 </div>
 
                 <p className="mt-10 text-center text-sm text-slate-500">
-                  分析後は比較一覧へ移動し、競合度・成長性・参入余地を確認できます。
+                  分析後は一覧ページへ移動し、競合度や成長性を確認できます。
                 </p>
               </div>
 
-              {(form.formState.isSubmitting || isRedirecting || error || result) ? (
-                <div className="space-y-4">
-                  {form.formState.isSubmitting || isRedirecting ? (
-                    <div className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50/90 p-4 text-sm text-fuchsia-900">
-                      <div className="flex items-center gap-2 font-medium">
-                        <Sparkles className="h-4 w-4" />
-                        {progressSteps[stepIndex]}
+              {form.formState.isSubmitting || isRedirecting ? (
+                <div className="rounded-2xl border border-fuchsia-100 bg-fuchsia-50/90 p-4 text-sm text-fuchsia-900">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Sparkles className="h-4 w-4" />
+                    {progressSteps[stepIndex]}
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {progressSteps.map((step, index) => (
+                      <div key={step} className={index <= stepIndex ? "text-fuchsia-900" : "text-fuchsia-400"}>
+                        {index + 1}. {step}
                       </div>
-                      <div className="mt-3 grid gap-2">
-                        {progressSteps.map((step, index) => (
-                          <div key={step} className={index <= stepIndex ? "text-fuchsia-900" : "text-fuchsia-400"}>
-                            {index + 1}. {step}
-                          </div>
-                        ))}
-                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {error ? <p className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-600">{error}</p> : null}
+
+              {result ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-xs text-slate-500">取得元</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {result.source === "youtube-api" ? "YouTube Data API v3" : "モックデータ"}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white p-4">
+                      <p className="text-xs text-slate-500">保存件数</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {result.savedCount} 件保存 / {result.fetchedCount} 件取得
+                      </p>
+                    </div>
+                  </div>
+
+                  {result.errors.length > 0 ? (
+                    <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+                      {result.errors.map((item) => (
+                        <p key={item}>{item}</p>
+                      ))}
                     </div>
                   ) : null}
 
-                  {error ? (
-                    <p className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-600">{error}</p>
-                  ) : null}
-
-                  {result ? (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl bg-white p-4">
-                          <p className="text-xs text-slate-500">取得元</p>
-                          <p className="mt-1 text-sm font-semibold text-slate-900">
-                            {result.source === "youtube-api" ? "YouTube Data API v3" : "モックデータ"}
-                          </p>
-                        </div>
-                        <div className="rounded-2xl bg-white p-4">
-                          <p className="text-xs text-slate-500">保存件数</p>
-                          <p className="mt-1 text-sm font-semibold text-slate-900">
-                            {result.savedCount} 件保存 / {result.fetchedCount} 件取得
-                          </p>
-                        </div>
+                  {isRedirecting ? (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                      一覧への移動が遅い場合は、下のボタンから直接開けます。
+                      <div className="mt-3">
+                        <Button asChild variant="secondary" size="sm">
+                          <a href={result.nextPath}>一覧を開く</a>
+                        </Button>
                       </div>
-
-                      {result.errors.length > 0 ? (
-                        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                          {result.errors.map((item) => (
-                            <p key={item}>{item}</p>
-                          ))}
-                        </div>
-                      ) : null}
-
-                      {isRedirecting ? (
-                        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-                          一覧への移動が遅い場合は、下のボタンから直接開けます。
-                          <div className="mt-3">
-                            <Button asChild variant="secondary" size="sm">
-                              <a href={result.nextPath}>一覧を開く</a>
-                            </Button>
-                          </div>
-                        </div>
-                      ) : null}
                     </div>
                   ) : null}
                 </div>

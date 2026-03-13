@@ -39,6 +39,7 @@ type ChannelsTableClientProps = {
   currentQueryString: string;
   autoScanIds: string[];
   initialAutoScanStatus: AutoScanStatus | null;
+  onStatsChange?: (stats: DashboardStats) => void;
 };
 
 type RowPatch = Partial<
@@ -232,6 +233,7 @@ export function ChannelsTableClient({
   currentQueryString,
   autoScanIds,
   initialAutoScanStatus,
+  onStatsChange,
 }: ChannelsTableClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -258,11 +260,12 @@ export function ChannelsTableClient({
     setBulkDeepLoading(false);
     setActionError("");
     setStats(initialStats);
+    onStatsChange?.(initialStats);
     setRemainingAutoScanIds(autoScanIds);
     setAutoScanStatus(initialAutoScanStatus);
     setSalesExpansionState("idle");
     autoQueuedRef.current = new Set();
-  }, [autoScanIds, currentQueryString, initialAutoScanStatus, initialItems, initialStats]);
+  }, [autoScanIds, currentQueryString, initialAutoScanStatus, initialItems, initialStats, onStatsChange]);
 
   useEffect(() => {
     return () => {
@@ -352,11 +355,12 @@ export function ChannelsTableClient({
     setRows(data.items);
     if (data.stats) {
       setStats(data.stats);
+      onStatsChange?.(data.stats);
     }
     setSelectedIds((current) => current.filter((id) => data.items?.some((row) => row.id === id)));
     setRemainingAutoScanIds(Array.isArray(data.autoScanIds) ? data.autoScanIds : []);
     setAutoScanStatus(data.autoScanStatus ?? null);
-  }, [currentQueryString]);
+  }, [currentQueryString, onStatsChange]);
 
   const scheduleVisiblePageSync = useCallback(() => {
     if (syncTimerRef.current) {

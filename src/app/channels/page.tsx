@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 
 import { ChannelsTableClient } from "@/components/channels/channels-table-client";
+import { SalesResultsClient } from "@/components/channels/sales-results-client";
 import { UpgradeDialog } from "@/components/channels/upgrade-dialog";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -118,16 +119,6 @@ const DEFAULT_FILTERS: ChannelFiltersInput = {
   sort: "updated",
   page: 1,
 };
-
-const salesSummaryCards = [
-  { key: "totalChannels", label: "総件数" },
-  { key: "emailCount", label: "メールあり件数" },
-  { key: "formCount", label: "フォームあり件数" },
-  { key: "socialCount", label: "SNSあり件数" },
-  { key: "officialSiteCount", label: "公式サイトあり件数" },
-  { key: "bestEmailCount", label: "bestContact=email" },
-  { key: "bestFormCount", label: "bestContact=form" },
-] as const;
 
 const SALES_SORT_OPTIONS: ChannelSortValue[] = [
   "contactPriority",
@@ -603,35 +594,9 @@ export default async function ChannelsPage({
           <RivalFilters filters={filters} />
         </>
       ) : (
-        <>
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
-            {salesSummaryCards.map((card, index) => (
-              <div
-                key={card.key}
-                className={index === 0 ? "rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm" : "rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm"}
-              >
-                {index === 0 ? (
-                  <div className="border-l-4 border-blue-500 pl-4">
-                    <p className="text-sm text-slate-500">{card.label}</p>
-                    <p className="mt-3 text-5xl font-semibold tracking-tight text-slate-950">
-                      {formatNumber(data.stats[card.key as keyof typeof data.stats])}
-                    </p>
-                    <p className="mt-2 text-sm text-emerald-600">保存済みチャンネルベース</p>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-sm text-slate-500">{card.label}</p>
-                    <p className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
-                      {formatNumber(data.stats[card.key as keyof typeof data.stats])}
-                    </p>
-                  </>
-                )}
-              </div>
-            ))}
-          </section>
-
+        <SalesResultsClient data={data} filters={filters} currentQueryString={toQueryString(filters)}>
           <SalesFilters filters={filters} />
-        </>
+        </SalesResultsClient>
       )}
 
       {data.lockedCount > 0 ? (
@@ -648,18 +613,20 @@ export default async function ChannelsPage({
         </Card>
       ) : null}
 
-      <ChannelsTableClient
-        initialItems={data.items}
-        initialStats={data.stats}
-        lockedCount={data.lockedCount}
-        plan={data.plan}
-        mode={filters.mode}
-        totalCount={data.total}
-        currentSort={filters.sort}
-        currentQueryString={toQueryString(filters)}
-        autoScanIds={data.autoScanIds}
-        initialAutoScanStatus={data.autoScanStatus}
-      />
+      {filters.mode === "sales" ? null : (
+        <ChannelsTableClient
+          initialItems={data.items}
+          initialStats={data.stats}
+          lockedCount={data.lockedCount}
+          plan={data.plan}
+          mode={filters.mode}
+          totalCount={data.total}
+          currentSort={filters.sort}
+          currentQueryString={toQueryString(filters)}
+          autoScanIds={data.autoScanIds}
+          initialAutoScanStatus={data.autoScanStatus}
+        />
+      )}
 
       {data.plan === "PRO" && data.totalPages > 1 ? (
         <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">

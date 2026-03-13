@@ -1,4 +1,4 @@
-# TubeLead0312
+# TubeLead0312-
 
 TubeLead は、YouTubeチャンネル検索をもとに営業リスト作成とライバル調査を行えるローカルMVPです。  
 YouTube の取得は [YouTube Data API v3](https://developers.google.com/youtube/v3) のみを使い、YouTube HTML の直接スクレイピングは行いません。

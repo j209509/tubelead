@@ -5,6 +5,7 @@ import { UpgradeDialog } from "@/components/channels/upgrade-dialog";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { CHANNEL_SORT_LABELS, MODE_LABELS, type AppModeValue } from "@/lib/constants";
 import { getChannelList, getRivalDashboardSummary } from "@/lib/channels";
 import { channelFiltersSchema, type ChannelFiltersInput } from "@/lib/schemas";
@@ -217,129 +218,181 @@ export default async function ChannelsPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4 xl:grid-cols-[minmax(220px,1.2fr)_repeat(4,minmax(120px,0.7fr))_auto]" method="GET">
+          <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-6" method="GET">
             <input type="hidden" name="page" value="1" />
             <input type="hidden" name="mode" value={filters.mode} />
-            <input
-              name="q"
-              defaultValue={filters.q}
-              placeholder="チャンネル名、カテゴリ、sourceQuery で検索"
-              className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            />
-            <input
-              name="sourceQuery"
-              defaultValue={filters.sourceQuery}
-              placeholder="sourceQueries を含む語"
-              className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            />
-            <input
-              name="minSubscribers"
-              type="number"
-              min={0}
-              defaultValue={filters.minSubscribers}
-              placeholder="登録者数以上"
-              className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            />
-            <input
-              name="minVideos"
-              type="number"
-              min={0}
-              defaultValue={filters.minVideos}
-              placeholder="総動画数以上"
-              className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            />
+            <div className="grid gap-2 xl:col-span-2">
+              <Label htmlFor="channel-filter-q">キーワード / チャンネル名</Label>
+              <input
+                id="channel-filter-q"
+                name="q"
+                defaultValue={filters.q}
+                placeholder="チャンネル名、カテゴリ、sourceQuery で検索"
+                className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="channel-filter-source-query">検索ソース語</Label>
+              <input
+                id="channel-filter-source-query"
+                name="sourceQuery"
+                defaultValue={filters.sourceQuery}
+                placeholder="sourceQueries を含む語"
+                className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="channel-filter-min-subscribers">最低登録者数</Label>
+              <input
+                id="channel-filter-min-subscribers"
+                name="minSubscribers"
+                type="number"
+                min={0}
+                defaultValue={filters.minSubscribers}
+                placeholder="登録者数以上"
+                className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="channel-filter-min-videos">最低動画数</Label>
+              <input
+                id="channel-filter-min-videos"
+                name="minVideos"
+                type="number"
+                min={0}
+                defaultValue={filters.minVideos}
+                placeholder="総動画数以上"
+                className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
 
             {filters.mode === "rival" ? (
               <>
-                <input
-                  name="minAvgViewsLast10"
-                  type="number"
-                  min={0}
-                  defaultValue={filters.minAvgViewsLast10}
-                  placeholder="直近平均再生以上"
-                  className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
-                <input
-                  name="minEstimatedMonthlyIncomeBase"
-                  type="number"
-                  min={0}
-                  defaultValue={filters.minEstimatedMonthlyIncomeBase}
-                  placeholder="想定月収 base 以上"
-                  className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
-                <input
-                  name="minPostsLast30"
-                  type="number"
-                  min={0}
-                  defaultValue={filters.minPostsLast30}
-                  placeholder="直近30日投稿本数以上"
-                  className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
-                <input
-                  name="minOpportunityScore"
-                  type="number"
-                  min={0}
-                  max={100}
-                  defaultValue={filters.minOpportunityScore}
-                  placeholder="参入魅力度以上"
-                  className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
+                <div className="grid gap-2">
+                  <Label htmlFor="channel-filter-min-avg-views">直近10本平均再生数 以上</Label>
+                  <input
+                    id="channel-filter-min-avg-views"
+                    name="minAvgViewsLast10"
+                    type="number"
+                    min={0}
+                    defaultValue={filters.minAvgViewsLast10}
+                    placeholder="直近平均再生以上"
+                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="channel-filter-income-base">想定月収 base 以上</Label>
+                  <input
+                    id="channel-filter-income-base"
+                    name="minEstimatedMonthlyIncomeBase"
+                    type="number"
+                    min={0}
+                    defaultValue={filters.minEstimatedMonthlyIncomeBase}
+                    placeholder="想定月収 base 以上"
+                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="channel-filter-posts-last30">直近30日投稿本数 以上</Label>
+                  <input
+                    id="channel-filter-posts-last30"
+                    name="minPostsLast30"
+                    type="number"
+                    min={0}
+                    defaultValue={filters.minPostsLast30}
+                    placeholder="直近30日投稿本数以上"
+                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="channel-filter-opportunity">参入魅力度 以上</Label>
+                  <input
+                    id="channel-filter-opportunity"
+                    name="minOpportunityScore"
+                    type="number"
+                    min={0}
+                    max={100}
+                    defaultValue={filters.minOpportunityScore}
+                    placeholder="参入魅力度以上"
+                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
               </>
             ) : (
               <>
-                <input
-                  name="minContactabilityScore"
-                  type="number"
-                  min={0}
-                  max={100}
-                  defaultValue={filters.minContactabilityScore}
-                  placeholder="連絡可能性以上"
-                  className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
-                <select
-                  name="sort"
-                  defaultValue={filters.sort}
-                  className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                >
-                  {Object.entries(CHANNEL_SORT_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                <div className="grid gap-2">
+                  <Label htmlFor="channel-filter-contactability">連絡可能性スコア 以上</Label>
+                  <input
+                    id="channel-filter-contactability"
+                    name="minContactabilityScore"
+                    type="number"
+                    min={0}
+                    max={100}
+                    defaultValue={filters.minContactabilityScore}
+                    placeholder="連絡可能性以上"
+                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="channel-filter-sort-sales">並び順</Label>
+                  <select
+                    id="channel-filter-sort-sales"
+                    name="sort"
+                    defaultValue={filters.sort}
+                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  >
+                    {Object.entries(CHANNEL_SORT_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </>
             )}
 
             {filters.mode === "rival" ? (
               <>
-                <select
-                  name="sort"
-                  defaultValue={filters.sort}
-                  className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                >
-                  {Object.entries(CHANNEL_SORT_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  name="maxShortsRatio"
-                  type="number"
-                  min={0}
-                  max={100}
-                  defaultValue={filters.maxShortsRatio}
-                  placeholder="Shorts率 以下"
-                  className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
-                <input
-                  name="publishedWithinDays"
-                  type="number"
-                  min={0}
-                  defaultValue={filters.publishedWithinDays}
-                  placeholder="最新投稿日 ○日以内"
-                  className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                />
+                <div className="grid gap-2">
+                  <Label htmlFor="channel-filter-sort-rival">並び順</Label>
+                  <select
+                    id="channel-filter-sort-rival"
+                    name="sort"
+                    defaultValue={filters.sort}
+                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  >
+                    {Object.entries(CHANNEL_SORT_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="channel-filter-shorts-ratio">Shorts率 以下 (%)</Label>
+                  <input
+                    id="channel-filter-shorts-ratio"
+                    name="maxShortsRatio"
+                    type="number"
+                    min={0}
+                    max={100}
+                    defaultValue={filters.maxShortsRatio}
+                    placeholder="Shorts率 以下"
+                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="channel-filter-published-within">最新投稿日 何日以内</Label>
+                  <input
+                    id="channel-filter-published-within"
+                    name="publishedWithinDays"
+                    type="number"
+                    min={0}
+                    defaultValue={filters.publishedWithinDays}
+                    placeholder="最新投稿日 ○日以内"
+                    className="h-11 rounded-xl border border-slate-200 bg-white/90 px-3 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
               </>
             ) : null}
 
@@ -376,7 +429,7 @@ export default async function ChannelsPage({
               </>
             ) : null}
 
-            <div className="flex gap-3 xl:justify-end">
+            <div className="flex gap-3 md:col-span-2 xl:col-span-6 xl:justify-end">
               <Button type="submit">絞り込む</Button>
               <Button asChild variant="secondary">
                 <Link href={`/channels?mode=${filters.mode}`}>リセット</Link>

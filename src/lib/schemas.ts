@@ -88,6 +88,47 @@ export const draftCreateSchema = z.object({
   rationale: z.string().trim().max(1000).optional().or(z.literal("")),
 });
 
+export const outreachTemplateSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  basePrompt: z.string().trim().min(1).max(4000),
+  baseMailText: z.string().trim().min(1).max(8000),
+});
+
+export const emailGenerationTargetSchema = z.object({
+  channelId: z.string().trim().optional().nullable(),
+  title: z.string().trim().min(1).max(200),
+  email: z.string().trim().email(),
+  description: z.string().trim().max(10000).optional().default(""),
+  categoryGuess: z.string().trim().max(120).optional().nullable(),
+  regionGuess: z.string().trim().max(120).optional().nullable(),
+  channelUrl: z.string().trim().url().optional().nullable(),
+  subscriberCount: z.number().int().min(0).optional().nullable(),
+  videoCount: z.number().int().min(0).optional().nullable(),
+  sourceType: z.enum(["single_channel", "csv_import"]),
+});
+
+export const emailDraftGenerateSchema = z.object({
+  templateId: z.string().trim().min(1),
+  target: emailGenerationTargetSchema,
+});
+
+export const emailDraftSaveSchema = z.object({
+  channelId: z.string().trim().optional().nullable(),
+  channelTitle: z.string().trim().min(1).max(200),
+  email: z.string().trim().email().optional().nullable(),
+  subject: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(10000),
+  status: z.enum(["draft", "reviewed", "ready_to_send"]).default("draft"),
+  sourceType: z.string().trim().min(1).max(80),
+  templateId: z.string().trim().optional().nullable(),
+  customPoint: z.string().trim().max(500).optional().or(z.literal("")),
+  rationale: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
+export const emailDraftBatchSaveSchema = z.object({
+  drafts: z.array(emailDraftSaveSchema).min(1).max(500),
+});
+
 export const settingsSchema = z.object({
   serviceName: z.string().trim().min(1).max(80),
   serviceDescription: z.string().trim().min(1).max(1200),
@@ -109,4 +150,9 @@ export type ChannelFiltersInput = z.infer<typeof channelFiltersSchema>;
 export type ChannelUpdateInput = z.infer<typeof channelUpdateSchema>;
 export type DraftGenerateInput = z.infer<typeof draftGenerateSchema>;
 export type DraftCreateInput = z.infer<typeof draftCreateSchema>;
+export type OutreachTemplateInput = z.infer<typeof outreachTemplateSchema>;
+export type EmailGenerationTargetInput = z.infer<typeof emailGenerationTargetSchema>;
+export type EmailDraftGenerateInput = z.infer<typeof emailDraftGenerateSchema>;
+export type EmailDraftSaveInput = z.infer<typeof emailDraftSaveSchema>;
+export type EmailDraftBatchSaveInput = z.infer<typeof emailDraftBatchSaveSchema>;
 export type SettingsInput = z.infer<typeof settingsSchema>;

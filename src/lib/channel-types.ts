@@ -71,12 +71,40 @@ export type ExternalScanLogEntry = {
 
 export type ChannelDraft = {
   id: string;
+  channelId?: string | null;
+  channelTitle: string;
+  email?: string | null;
   subject: string;
   body: string;
+  status: "draft" | "reviewed" | "ready_to_send";
+  sourceType: string;
+  templateId?: string | null;
   customPoint: string;
   rationale: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type OutreachTemplateItem = {
+  id: string;
+  name: string;
+  basePrompt: string;
+  baseMailText: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EmailGenerationTarget = {
+  channelId?: string | null;
+  title: string;
+  email: string;
+  description?: string;
+  categoryGuess?: string | null;
+  regionGuess?: string | null;
+  channelUrl?: string | null;
+  subscriberCount?: number | null;
+  videoCount?: number | null;
+  sourceType: "single_channel" | "csv_import";
 };
 
 export type RivalAnalysisComment = {

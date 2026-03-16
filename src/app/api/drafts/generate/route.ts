@@ -49,8 +49,14 @@ export async function POST(request: Request) {
   const saved = await prisma.outreachDraft.create({
     data: {
       channelId: parsed.data.channelId,
+      channelTitle: detail.channel.title,
+      email:
+        detail.channel.contactEmail ||
+        (detail.channel.bestContactValue?.includes("@") ? detail.channel.bestContactValue : null),
       subject: generated.subject,
       body: generated.body,
+      status: "draft",
+      sourceType: "channel_detail",
       customPoint: generated.customPoint,
       rationale: generated.rationale,
     },
@@ -60,8 +66,14 @@ export async function POST(request: Request) {
     plan,
     draft: {
       id: saved.id,
+      channelId: saved.channelId,
+      channelTitle: saved.channelTitle,
+      email: saved.email,
       subject: saved.subject,
       body: saved.body,
+      status: saved.status,
+      sourceType: saved.sourceType,
+      templateId: saved.templateId,
       customPoint: saved.customPoint || "",
       rationale: saved.rationale || "",
       createdAt: saved.createdAt.toISOString(),

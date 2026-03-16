@@ -251,6 +251,19 @@ async function main() {
     },
   });
 
+  const templateCount = await prisma.outreachTemplate.count();
+  if (templateCount === 0) {
+    await prisma.outreachTemplate.create({
+      data: {
+        name: "標準テンプレート",
+        basePrompt:
+          "YouTubeチャンネルごとに自然で丁寧な営業メールへ書き換えてください。相手のチャンネル名、説明文、カテゴリ、地域、連絡先を踏まえて、そのチャンネルを見た印象が伝わる文面にしてください。",
+        baseMailText:
+          "はじめまして。チャンネルの発信内容を拝見しました。\nYouTubeでの企画や運営に役立つご提案ができると感じ、ご連絡しました。\nもしご興味があれば、一度だけでもお話の機会をいただけますと幸いです。",
+      },
+    });
+  }
+
   for (const seed of MOCK_CHANNEL_SEEDS) {
     const normalized = normalizeMockSeed(seed, seed.seedQueries[0], seed.seedQueries, 5);
     await persistNormalizedChannel(normalized);

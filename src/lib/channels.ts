@@ -103,8 +103,14 @@ export type ChannelListResult = {
 
 function serializeDraft(draft: {
   id: string;
+  channelId: string | null;
+  channelTitle: string;
+  email: string | null;
   subject: string;
   body: string;
+  status: string;
+  sourceType: string;
+  templateId: string | null;
   customPoint: string | null;
   rationale: string | null;
   createdAt: Date;
@@ -112,8 +118,14 @@ function serializeDraft(draft: {
 }): SerializedDraft {
   return {
     id: draft.id,
+    channelId: draft.channelId,
+    channelTitle: draft.channelTitle,
+    email: draft.email,
     subject: draft.subject,
     body: draft.body,
+    status: draft.status as SerializedDraft["status"],
+    sourceType: draft.sourceType,
+    templateId: draft.templateId,
     customPoint: draft.customPoint || "",
     rationale: draft.rationale || "",
     createdAt: draft.createdAt.toISOString(),

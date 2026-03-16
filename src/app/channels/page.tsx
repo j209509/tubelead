@@ -527,6 +527,11 @@ export default async function ChannelsPage({
   const actions = (
     <div className="flex flex-wrap items-center gap-3">
       <ModeTabs currentMode={filters.mode} />
+      {filters.mode === "sales" ? (
+        <Button asChild variant="secondary">
+          <Link href="/mail-builder">営業メール作成</Link>
+        </Button>
+      ) : null}
       <Button asChild>
         <a href={`/api/export/csv?${toQueryString(filters, { page: 1 })}`}>CSV出力</a>
       </Button>

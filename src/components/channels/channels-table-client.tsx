@@ -944,9 +944,19 @@ export function ChannelsTableClient({
                           <EnrichmentStatusBadge status={channel.lightEnrichmentStatus} label="動画" />
                           <EnrichmentStatusBadge status={channel.deepEnrichmentStatus} label="外部" />
                         </div>
-                        <Button asChild size="sm" variant="ghost">
-                          <Link href={`/channels/${channel.id}?mode=${mode}`}>詳細</Link>
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="secondary"
+                            className={!channel.contactEmail && channel.contactEmails.length === 0 ? "pointer-events-none opacity-40" : ""}
+                          >
+                            <Link href={`/mail-builder?channelId=${channel.id}`}>営業メール</Link>
+                          </Button>
+                          <Button asChild size="sm" variant="ghost">
+                            <Link href={`/channels/${channel.id}?mode=${mode}`}>詳細</Link>
+                          </Button>
+                        </div>
                       </div>
                     </td>
                   </tr>

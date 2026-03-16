@@ -113,6 +113,14 @@ function serializeDraft(draft: {
   templateId: string | null;
   customPoint: string | null;
   rationale: string | null;
+  personalizationPoints: string | null;
+  usedChannelSignals: string | null;
+  confidenceNote: string | null;
+  gmailDraftId: string | null;
+  gmailSaveStatus: string;
+  gmailSavedAt: Date | null;
+  errorMessage: string | null;
+  template?: { name: string } | null;
   createdAt: Date;
   updatedAt: Date;
 }): SerializedDraft {
@@ -126,8 +134,16 @@ function serializeDraft(draft: {
     status: draft.status as SerializedDraft["status"],
     sourceType: draft.sourceType,
     templateId: draft.templateId,
+    templateName: draft.template?.name || null,
     customPoint: draft.customPoint || "",
     rationale: draft.rationale || "",
+    personalizationPoints: draft.personalizationPoints || "",
+    usedChannelSignals: draft.usedChannelSignals ? JSON.parse(draft.usedChannelSignals) : [],
+    confidenceNote: draft.confidenceNote || "",
+    gmailDraftId: draft.gmailDraftId,
+    gmailSaveStatus: (draft.gmailSaveStatus as SerializedDraft["gmailSaveStatus"]) || "not_saved",
+    gmailSavedAt: draft.gmailSavedAt ? draft.gmailSavedAt.toISOString() : null,
+    errorMessage: draft.errorMessage,
     createdAt: draft.createdAt.toISOString(),
     updatedAt: draft.updatedAt.toISOString(),
   };

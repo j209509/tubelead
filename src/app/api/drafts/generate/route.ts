@@ -59,6 +59,13 @@ export async function POST(request: Request) {
       sourceType: "channel_detail",
       customPoint: generated.customPoint,
       rationale: generated.rationale,
+      personalizationPoints: generated.customPoint,
+      usedChannelSignals: JSON.stringify([
+        `チャンネル名: ${detail.channel.title}`,
+        `カテゴリ: ${detail.channel.categoryGuess || "不明"}`,
+        `地域: ${detail.channel.regionGuess || "不明"}`,
+      ]),
+      confidenceNote: generated.rationale,
     },
   });
 
@@ -76,6 +83,13 @@ export async function POST(request: Request) {
       templateId: saved.templateId,
       customPoint: saved.customPoint || "",
       rationale: saved.rationale || "",
+      personalizationPoints: saved.personalizationPoints || "",
+      usedChannelSignals: saved.usedChannelSignals ? JSON.parse(saved.usedChannelSignals) : [],
+      confidenceNote: saved.confidenceNote || "",
+      gmailDraftId: saved.gmailDraftId,
+      gmailSaveStatus: saved.gmailSaveStatus as "not_saved" | "saved" | "failed",
+      gmailSavedAt: saved.gmailSavedAt?.toISOString() || null,
+      errorMessage: saved.errorMessage,
       createdAt: saved.createdAt.toISOString(),
       updatedAt: saved.updatedAt.toISOString(),
     },

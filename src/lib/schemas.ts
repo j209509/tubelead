@@ -129,6 +129,19 @@ export const emailDraftBatchSaveSchema = z.object({
   drafts: z.array(emailDraftSaveSchema).min(1).max(500),
 });
 
+export const emailDraftUpdateSchema = z.object({
+  subject: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(10000),
+  status: z.enum(["draft", "reviewed", "ready_to_send"]).default("draft"),
+  personalizationPoints: z.string().trim().max(2000).optional().or(z.literal("")),
+  usedChannelSignals: z.array(z.string().trim().min(1).max(200)).max(20).default([]),
+  confidenceNote: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export const gmailDraftBatchSaveSchema = z.object({
+  draftIds: z.array(z.string().trim().min(1)).min(1).max(100),
+});
+
 export const settingsSchema = z.object({
   serviceName: z.string().trim().min(1).max(80),
   serviceDescription: z.string().trim().min(1).max(1200),
@@ -155,4 +168,6 @@ export type EmailGenerationTargetInput = z.infer<typeof emailGenerationTargetSch
 export type EmailDraftGenerateInput = z.infer<typeof emailDraftGenerateSchema>;
 export type EmailDraftSaveInput = z.infer<typeof emailDraftSaveSchema>;
 export type EmailDraftBatchSaveInput = z.infer<typeof emailDraftBatchSaveSchema>;
+export type EmailDraftUpdateInput = z.infer<typeof emailDraftUpdateSchema>;
+export type GmailDraftBatchSaveInput = z.infer<typeof gmailDraftBatchSaveSchema>;
 export type SettingsInput = z.infer<typeof settingsSchema>;

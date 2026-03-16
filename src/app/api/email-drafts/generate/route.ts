@@ -82,6 +82,14 @@ export async function POST(request: Request) {
   }
 
   const generated = await generateSalesEmailDraft(target, template);
+  const usedChannelSignals = [
+    `チャンネル名: ${target.title}`,
+    `カテゴリ: ${target.categoryGuess || "未設定"}`,
+    `地域: ${target.regionGuess || "未設定"}`,
+    `概要文あり: ${target.description ? "yes" : "no"}`,
+    `登録者数: ${target.subscriberCount ?? 0}`,
+    `動画数: ${target.videoCount ?? 0}`,
+  ];
 
   return NextResponse.json({
     draft: {
@@ -95,6 +103,9 @@ export async function POST(request: Request) {
       templateId: template.id,
       customPoint: generated.customPoint,
       rationale: generated.rationale,
+      personalizationPoints: generated.customPoint,
+      usedChannelSignals,
+      confidenceNote: generated.rationale,
     },
   });
 }

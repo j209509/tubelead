@@ -28,6 +28,9 @@ type BuilderRow = {
   body: string;
   customPoint: string;
   rationale: string;
+  personalizationPoints: string;
+  usedChannelSignals: string[];
+  confidenceNote: string;
   error?: string;
   templateId?: string | null;
 };
@@ -153,6 +156,9 @@ function buildRowsFromCsv(text: string): BuilderRow[] {
         body: "",
         customPoint: "",
         rationale: "",
+        personalizationPoints: "",
+        usedChannelSignals: [],
+        confidenceNote: "",
       };
     });
 
@@ -177,6 +183,9 @@ function buildSingleChannelRow(target: EmailGenerationTarget): BuilderRow {
     body: "",
     customPoint: "",
     rationale: "",
+    personalizationPoints: "",
+    usedChannelSignals: [],
+    confidenceNote: "",
   };
 }
 
@@ -322,6 +331,9 @@ export function EmailBuilderClient({
           body: data.draft.body,
           customPoint: data.draft.customPoint,
           rationale: data.draft.rationale,
+          personalizationPoints: data.draft.personalizationPoints || data.draft.customPoint || "",
+          usedChannelSignals: data.draft.usedChannelSignals || [],
+          confidenceNote: data.draft.confidenceNote || data.draft.rationale || "",
           templateId: data.draft.templateId,
           error: "",
         });
@@ -360,6 +372,9 @@ export function EmailBuilderClient({
             templateId: row.templateId || selectedTemplateId || null,
             customPoint: row.customPoint,
             rationale: row.rationale,
+            personalizationPoints: row.personalizationPoints,
+            usedChannelSignals: row.usedChannelSignals,
+            confidenceNote: row.confidenceNote,
           },
         ],
       }),
@@ -408,6 +423,9 @@ export function EmailBuilderClient({
           templateId: row.templateId || selectedTemplateId || null,
           customPoint: row.customPoint,
           rationale: row.rationale,
+          personalizationPoints: row.personalizationPoints,
+          usedChannelSignals: row.usedChannelSignals,
+          confidenceNote: row.confidenceNote,
         })),
       }),
     });

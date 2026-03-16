@@ -111,25 +111,33 @@ model SearchHistory {
 }
 
 model OutreachDraft {
-  id          String           @id @default(cuid())
-  channel     Channel?         @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  channelId   String?
-  template    OutreachTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  templateId  String?
-  channelTitle String
-  email       String?
-  subject     String
-  body        String
-  status      String           @default("draft")
-  sourceType  String           @default("channel_detail")
-  customPoint String?
-  rationale   String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id                    String            @id @default(cuid())
+  channel               Channel?          @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId             String?
+  template              OutreachTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  templateId            String?
+  channelTitle          String
+  email                 String?
+  subject               String
+  body                  String
+  status                String            @default("draft")
+  sourceType            String            @default("channel_detail")
+  customPoint           String?
+  rationale             String?
+  personalizationPoints String?
+  usedChannelSignals    String?
+  confidenceNote        String?
+  gmailDraftId          String?
+  gmailSaveStatus       String            @default("not_saved")
+  gmailSavedAt          DateTime?
+  errorMessage          String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
   @@index([channelId])
   @@index([templateId])
   @@index([status])
+  @@index([gmailSaveStatus])
   @@index([createdAt])
 }
 
@@ -233,6 +241,9 @@ model AppSetting {
   externalSiteMaxUrlsPerChannel  Int      @default(2)
   externalSiteRateLimitMs        Int      @default(1200)
   externalSiteTimeoutMs          Int      @default(8000)
+  gmailAccessToken               String?
+  gmailRefreshToken              String?
+  gmailTokenExpiry               DateTime?
   createdAt                      DateTime @default(now())
   updatedAt                      DateTime @updatedAt
 }

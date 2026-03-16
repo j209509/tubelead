@@ -10,6 +10,9 @@ const navigation = [
   { href: "/", label: "ホーム", exact: true },
   { href: "/search", label: "チャンネル検索" },
   { href: "/channels", label: "一覧管理" },
+  { href: "/mail-builder", label: "営業メール作成" },
+  { href: "/mail-templates", label: "営業テンプレ設定" },
+  { href: "/mail-drafts", label: "下書き一覧" },
   { href: "/settings", label: "AI設定" },
 ];
 
@@ -29,7 +32,7 @@ export function TopNav({ plan }: { plan: AppPlanValue }) {
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-2 md:flex">
+        <nav className="hidden items-center gap-2 lg:flex">
           {navigation.map((item) => {
             const active = item.exact
               ? pathname === item.href

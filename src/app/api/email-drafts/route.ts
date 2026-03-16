@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 
-import { saveOutreachDraftBatch } from "@/lib/outreach";
+import { getOutreachDrafts, saveOutreachDraftBatch } from "@/lib/outreach";
 import { emailDraftBatchSaveSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
+
+export async function GET() {
+  const drafts = await getOutreachDrafts();
+  return NextResponse.json({ drafts });
+}
 
 export async function POST(request: Request) {
   const body = await request.json();

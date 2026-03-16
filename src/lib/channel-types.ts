@@ -79,8 +79,16 @@ export type ChannelDraft = {
   status: "draft" | "reviewed" | "ready_to_send";
   sourceType: string;
   templateId?: string | null;
+  templateName?: string | null;
   customPoint: string;
   rationale: string;
+  personalizationPoints: string;
+  usedChannelSignals: string[];
+  confidenceNote: string;
+  gmailDraftId?: string | null;
+  gmailSaveStatus: "not_saved" | "saved" | "failed";
+  gmailSavedAt?: string | null;
+  errorMessage?: string | null;
   createdAt: string;
   updatedAt: string;
 };

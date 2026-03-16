@@ -26,6 +26,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       templateId: draft.templateId,
       customPoint: draft.customPoint || "",
       rationale: draft.rationale || "",
+      personalizationPoints: draft.personalizationPoints || "",
+      usedChannelSignals: draft.usedChannelSignals ? JSON.parse(draft.usedChannelSignals) : [],
+      confidenceNote: draft.confidenceNote || "",
+      gmailDraftId: draft.gmailDraftId,
+      gmailSaveStatus: draft.gmailSaveStatus as "not_saved" | "saved" | "failed",
+      gmailSavedAt: draft.gmailSavedAt?.toISOString() || null,
+      errorMessage: draft.errorMessage,
       createdAt: draft.createdAt.toISOString(),
       updatedAt: draft.updatedAt.toISOString(),
     })),
@@ -40,7 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!parsed.success) {
     return NextResponse.json(
       {
-        error: parsed.error.issues[0]?.message || "下書き内容が不正です。",
+        error: parsed.error.issues[0]?.message || "下書き作成データが不正です。",
       },
       { status: 400 },
     );
@@ -72,6 +79,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       sourceType: "channel_detail",
       customPoint: parsed.data.customPoint || "",
       rationale: parsed.data.rationale || "",
+      personalizationPoints: parsed.data.customPoint || "",
+      usedChannelSignals: JSON.stringify([`チャンネル名: ${channel.title}`]),
+      confidenceNote: parsed.data.rationale || "",
     },
   });
 
@@ -88,6 +98,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       templateId: draft.templateId,
       customPoint: draft.customPoint || "",
       rationale: draft.rationale || "",
+      personalizationPoints: draft.personalizationPoints || "",
+      usedChannelSignals: draft.usedChannelSignals ? JSON.parse(draft.usedChannelSignals) : [],
+      confidenceNote: draft.confidenceNote || "",
+      gmailDraftId: draft.gmailDraftId,
+      gmailSaveStatus: draft.gmailSaveStatus as "not_saved" | "saved" | "failed",
+      gmailSavedAt: draft.gmailSavedAt?.toISOString() || null,
+      errorMessage: draft.errorMessage,
       createdAt: draft.createdAt.toISOString(),
       updatedAt: draft.updatedAt.toISOString(),
     },

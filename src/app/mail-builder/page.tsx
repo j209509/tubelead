@@ -1,11 +1,11 @@
 import Link from "next/link";
 
-import { EmailBuilderClient } from "@/components/outreach/email-builder-client";
 import { AppShell } from "@/components/layout/app-shell";
+import { EmailBuilderClient } from "@/components/outreach/email-builder-client";
 import { Button } from "@/components/ui/button";
 import type { EmailGenerationTarget } from "@/lib/channel-types";
-import { getOutreachTemplates } from "@/lib/outreach";
 import { prisma } from "@/lib/prisma";
+import { getOutreachTemplates } from "@/lib/outreach";
 
 export const dynamic = "force-dynamic";
 
@@ -78,11 +78,14 @@ export default async function MailBuilderPage({
   return (
     <AppShell
       title="営業メール作成"
-      description="CSVまたは単体チャンネルから、AIで個別最適化した営業メールをまとめて生成し、下書き保存できます。送信は行わず、最終確認は人間が行う前提です。"
+      description="CSVまたは単体チャンネルから、AIで個別最適化した営業メールを作成して下書き保存できます。送信は行わず、最終確認と送信は人間が Gmail 上で行う前提です。"
       actions={
         <div className="flex flex-wrap items-center gap-3">
           <Button asChild variant="secondary">
             <Link href="/mail-templates">営業テンプレ設定</Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href="/mail-drafts">下書き一覧</Link>
           </Button>
           <Button asChild variant="secondary">
             <Link href="/channels?mode=sales">一覧管理へ戻る</Link>
